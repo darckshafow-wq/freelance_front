@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../../../controllers/freelance/application_controller.dart';
+import '../../../../constants/app_colors.dart';
 
-class FreelanceJobDetailPage extends StatelessWidget {
+class FreelanceJobDetailPage extends StatefulWidget {
   const FreelanceJobDetailPage({super.key});
+
+  @override
+  State<FreelanceJobDetailPage> createState() => _FreelanceJobDetailPageState();
+}
+
+class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
+  final ApplicationController _applicationController = ApplicationController();
 
   @override
   Widget build(BuildContext context) {
@@ -9,19 +18,35 @@ class FreelanceJobDetailPage extends StatelessWidget {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
-    final String title = args?['title'] ?? 'Landing page moderne';
-    final String budget = args?['budget'] ?? '800 €';
-    final String clientName = args?['clientName'] ?? 'TechStart Studio';
-    final String duration = args?['duration'] ?? '10 jours';
+    // Extraction des champs réels transmis par la page d'accueil
+    final int taskId = args?['id'] ?? 0;
+    final String title = args?['title'] ?? 'Sans titre';
+    final double budgetValue =
+        (args?['budgetValue'] as num?)?.toDouble() ?? 0.0;
+    final String budget = args?['budget'] ?? '$budgetValue F CFA';
     final String description =
-        args?['description'] ??
-        'Nous recherchons un développeur Full-Stack ou Front-End talentueux pour concevoir et intégrer '
-            'la nouvelle landing page de notre solution FinTech.\n\n'
-            'Le design Figma est déjà entièrement finalisé et propre. Votre rôle sera de donner vie '
-            'à cette maquette avec des animations fluides.';
+        args?['description'] ?? 'Aucune description fournie.';
+    final String? deadlineStr = args?['deadline'];
+
+    // ... (rest of the logic for duration)
+
+    // Valeurs par défaut pour les éléments non présents dans le modèle de tâche basique
+    final String clientName = args?['clientName'] ?? 'Client Anonyme';
     final List<String> tags = List<String>.from(
-      args?['tags'] ?? ['UI/UX', 'Remote', 'Urgent', 'Figma'],
+      args?['tags'] ?? ['Tech', 'Remote'],
     );
+
+    // Calcul de la durée restante si la deadline est présente
+    String duration = 'Flexible';
+    if (deadlineStr != null) {
+      final deadline = DateTime.tryParse(deadlineStr);
+      if (deadline != null) {
+        final daysLeft = deadline.difference(DateTime.now()).inDays;
+        duration = daysLeft > 0
+            ? '$daysLeft jours restants'
+            : 'Urgent / Expiré';
+      }
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDFBF7),
@@ -97,7 +122,6 @@ class FreelanceJobDetailPage extends StatelessWidget {
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    // Correction : withOpacity déprécié → withValues
                                     color: Colors.black.withValues(alpha: 0.05),
                                   ),
                                 ),
@@ -122,7 +146,6 @@ class FreelanceJobDetailPage extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            // Correction : withOpacity déprécié → withValues
                             color: Colors.black.withValues(alpha: 0.04),
                           ),
                           boxShadow: [
@@ -154,7 +177,8 @@ class FreelanceJobDetailPage extends StatelessWidget {
                                     Text(
                                       budget,
                                       style: const TextStyle(
-                                        fontSize: 28,
+                                        fontSize:
+                                            24, // Ajusté pour les montants longs en F CFA
                                         fontWeight: FontWeight.w900,
                                         color: Color(0xFFFFB000),
                                       ),
@@ -168,7 +192,6 @@ class FreelanceJobDetailPage extends StatelessWidget {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    // Correction : withOpacity → withValues
                                     color: const Color(
                                       0xFFFFB000,
                                     ).withValues(alpha: 0.08),
@@ -192,32 +215,83 @@ class FreelanceJobDetailPage extends StatelessWidget {
                               width: double.infinity,
                               height: 52,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.check_circle_outline,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              'Votre candidature pour "$title" a été envoyée !',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      backgroundColor: const Color(0xFFFFB000),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      margin: const EdgeInsets.all(16),
-                                    ),
-                                  );
-                                },
+                                onPressed: _applicationController.isLoading
+                                    ? null
+                                    : () async {
+                                        if (taskId <= 0) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Cette mission n\'est pas valide pour une candidature.',
+                                                ),
+                                                backgroundColor:
+                                                    AppColors.error,
+                                              ),
+                                            );
+                                          }
+                                          return;
+                                        }
+
+                                        final success =
+                                            await _applicationController
+                                                .applyToTask(
+                                                  taskId: taskId,
+                                                  budget: budgetValue,
+                                                );
+
+                                        if (mounted) {
+                                          if (!mounted) return;
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
+                                          if (success) {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons
+                                                          .check_circle_outline,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Votre candidature pour "$title" a été envoyée !',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                backgroundColor:
+                                                    AppColors.success,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                ),
+                                                margin: const EdgeInsets.all(
+                                                  16,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  _applicationController
+                                                          .errorMessage ??
+                                                      'Erreur lors de l\'envoi',
+                                                ),
+                                                backgroundColor:
+                                                    AppColors.error,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFFB000),
                                   foregroundColor: Colors.white,
@@ -226,20 +300,33 @@ class FreelanceJobDetailPage extends StatelessWidget {
                                   ),
                                   elevation: 0,
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Postuler',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                child: _applicationController.isLoading
+                                    ? const SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Postuler',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 18,
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward_rounded, size: 18),
-                                  ],
-                                ),
                               ),
                             ),
                           ],
@@ -272,13 +359,12 @@ class FreelanceJobDetailPage extends StatelessWidget {
             ),
           ),
 
-          // ─── Bouton Retour flottant (dans SafeArea pour éviter la status bar) ──
+          // ─── Bouton Retour flottant ───
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(top: 8, left: 16),
               child: ClipOval(
                 child: Material(
-                  // Correction : withOpacity → withValues
                   color: Colors.white.withValues(alpha: 0.92),
                   child: IconButton(
                     icon: const Icon(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
 
-import '../../../../models/user_model.dart';
-import '../../../../controllers/auth_controller.dart';
+import '../../../../models/auth/user_model.dart';
+import '../../../../controllers/auth/auth_controller.dart';
 
 class VerificationPage extends StatefulWidget {
   final String email;
@@ -41,9 +41,11 @@ class _VerificationPageState extends State<VerificationPage> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.16)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +70,7 @@ class _VerificationPageState extends State<VerificationPage> {
                     Text(
                       'Entrez le code reçu par email pour continuer.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -79,9 +81,11 @@ class _VerificationPageState extends State<VerificationPage> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.1),
+                          color: Colors.redAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                          border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Text(
                           _errorMessage!,
@@ -101,7 +105,7 @@ class _VerificationPageState extends State<VerificationPage> {
                           color: Colors.white70,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.12),
+                        fillColor: Colors.white.withValues(alpha: 0.12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -112,46 +116,56 @@ class _VerificationPageState extends State<VerificationPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : () async {
-                          if (_tokenController.text.length < 6) {
-                            setState(() => _errorMessage = "Le code doit contenir 6 chiffres");
-                            return;
-                          }
-                          
-                          setState(() {
-                            _isLoading = true;
-                            _errorMessage = null;
-                          });
-                          
-                          final authController = AuthController();
-                          final success = await authController.verifyOtp(widget.email, _tokenController.text);
-                          
-                          if (!context.mounted) return;
-                          
-                          if (success) {
-                            final role = authController.currentUser?.role;
-                            if (role == UserRole.client) {
-                              Navigator.pushNamedAndRemoveUntil(
-                                context,
-                                '/client/home',
-                                (route) => false,
-                                arguments: authController,
-                              );
-                            } else {
-                              Navigator.pushNamedAndRemoveUntil(
-                                context,
-                                '/freelance/home',
-                                (route) => false,
-                                arguments: authController,
-                              );
-                            }
-                          } else {
-                            setState(() {
-                              _isLoading = false;
-                              _errorMessage = authController.errorMessage ?? "Code invalide";
-                            });
-                          }
-                        },
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                if (_tokenController.text.length < 6) {
+                                  setState(
+                                    () => _errorMessage =
+                                        "Le code doit contenir 6 chiffres",
+                                  );
+                                  return;
+                                }
+
+                                setState(() {
+                                  _isLoading = true;
+                                  _errorMessage = null;
+                                });
+
+                                final authController = AuthController();
+                                final success = await authController.verifyOtp(
+                                  widget.email,
+                                  _tokenController.text,
+                                );
+
+                                if (!context.mounted) return;
+
+                                if (success) {
+                                  final role = authController.currentUser?.role;
+                                  if (role == UserRole.client) {
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/client/home',
+                                      (route) => false,
+                                      arguments: authController,
+                                    );
+                                  } else {
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/freelance/home',
+                                      (route) => false,
+                                      arguments: authController,
+                                    );
+                                  }
+                                } else {
+                                  setState(() {
+                                    _isLoading = false;
+                                    _errorMessage =
+                                        authController.errorMessage ??
+                                        "Code invalide";
+                                  });
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: Colors.white,
@@ -160,11 +174,14 @@ class _VerificationPageState extends State<VerificationPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: _isLoading 
+                        child: _isLoading
                             ? const SizedBox(
-                                height: 20, 
-                                width: 20, 
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Vérifier'),
                       ),
@@ -172,14 +189,20 @@ class _VerificationPageState extends State<VerificationPage> {
                     const SizedBox(height: 16),
                     Center(
                       child: TextButton(
-                        onPressed: _isLoading ? null : () async {
-                          final authController = AuthController();
-                          await authController.sendOtp(widget.email);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Un nouveau code a été envoyé !')),
-                          );
-                        },
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                final authController = AuthController();
+                                await authController.sendOtp(widget.email);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Un nouveau code a été envoyé !',
+                                    ),
+                                  ),
+                                );
+                              },
                         child: const Text(
                           'Renvoyer le code',
                           style: TextStyle(color: Colors.white),

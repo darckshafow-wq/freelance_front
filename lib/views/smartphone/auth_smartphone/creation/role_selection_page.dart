@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
+import 'create_account_page.dart';
 
 class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
@@ -86,7 +87,8 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => CreateAccountPage(role: _selectedRole),
+                              builder: (_) =>
+                                  CreateAccountPage(role: _selectedRole),
                             ),
                           );
                         },

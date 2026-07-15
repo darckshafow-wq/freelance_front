@@ -47,9 +47,9 @@ class _LandingViewState extends State<LandingView>
             end: Alignment.bottomRight,
             colors: [
               const Color(0xFF0F172A),
-              AppColors.primary.withOpacity(0.95),
-              AppColors.secondary.withOpacity(0.95),
-              AppColors.accent.withOpacity(0.9),
+              AppColors.primary.withValues(alpha: 0.95),
+              AppColors.secondary.withValues(alpha: 0.95),
+              AppColors.accent.withValues(alpha: 0.9),
             ],
           ),
         ),
@@ -63,11 +63,11 @@ class _LandingViewState extends State<LandingView>
                 height: 220,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.14),
+                  color: Colors.white.withValues(alpha: 0.14),
                   boxShadow: [
                     BoxShadow(
                       blurRadius: 80,
-                      color: Colors.white.withOpacity(0.12),
+                      color: Colors.white.withValues(alpha: 0.12),
                     ),
                   ],
                 ),
@@ -81,7 +81,7 @@ class _LandingViewState extends State<LandingView>
                 height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.accent.withOpacity(0.24),
+                  color: AppColors.accent.withValues(alpha: 0.24),
                 ),
               ),
             ),
@@ -102,14 +102,14 @@ class _LandingViewState extends State<LandingView>
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(28),
-                            color: Colors.white.withOpacity(0.10),
+                            color: Colors.white.withValues(alpha: 0.10),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.16),
+                              color: Colors.white.withValues(alpha: 0.16),
                               width: 1.0,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.16),
+                                color: Colors.black.withValues(alpha: 0.16),
                                 blurRadius: 24,
                                 offset: const Offset(0, 10),
                               ),
@@ -124,10 +124,10 @@ class _LandingViewState extends State<LandingView>
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.12),
+                                  color: Colors.white.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.16),
+                                    color: Colors.white.withValues(alpha: 0.16),
                                   ),
                                 ),
                                 child: const Text(
@@ -159,7 +159,7 @@ class _LandingViewState extends State<LandingView>
                                 'Créez, trouvez et gérez vos missions dans un espace simple, clair et inspirant.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.85),
+                                  color: Colors.white.withValues(alpha: 0.85),
                                   fontSize: 15,
                                   height: 1.6,
                                 ),
@@ -270,11 +270,11 @@ class _HeroIllustration extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withOpacity(0.16),
-            Colors.white.withOpacity(0.08),
+            Colors.white.withValues(alpha: 0.16),
+            Colors.white.withValues(alpha: 0.08),
           ],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
       child: Stack(
         children: [
@@ -286,7 +286,7 @@ class _HeroIllustration extends StatelessWidget {
               height: 70,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.accent.withOpacity(0.24),
+                color: AppColors.accent.withValues(alpha: 0.24),
               ),
             ),
           ),
@@ -297,9 +297,9 @@ class _HeroIllustration extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.14),
+                color: Colors.white.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white.withOpacity(0.14)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
               ),
               child: const Text(
                 'Projet en cours',
@@ -321,15 +321,15 @@ class _DashboardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final bgPaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = Colors.white.withValues(alpha: 0.08)
       ..style = PaintingStyle.fill;
 
     final cardPaint = Paint()
-      ..color = Colors.white.withOpacity(0.16)
+      ..color = Colors.white.withValues(alpha: 0.16)
       ..style = PaintingStyle.fill;
 
     final borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.24)
+      ..color = Colors.white.withValues(alpha: 0.24)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
 
@@ -344,7 +344,7 @@ class _DashboardPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final dotPaint = Paint()
-      ..color = Colors.white.withOpacity(0.7)
+      ..color = Colors.white.withValues(alpha: 0.7)
       ..style = PaintingStyle.fill;
 
     final rect = RRect.fromRectAndRadius(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 // Remonter de 4 niveaux pour aller chercher les contrôleurs, constantes et modèles
-import '../../../../controllers/task_controller.dart';
+import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
-import '../../../../models/task_model.dart';
+import '../../../../models/client/task_model.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 
 class MissionDetailView extends StatefulWidget {

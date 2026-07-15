@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 // Remonter de 4 niveaux pour aller chercher les contrôleurs et constantes
-import '../../../../controllers/auth_controller.dart';
-import '../../../../controllers/task_controller.dart';
+import '../../../../controllers/auth/auth_controller.dart';
+import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
-import '../../../../models/task_model.dart';
-import '../../../../services/api/mock_data.dart';
+import '../../../../models/client/task_model.dart';
 import '../../../../routes/app_router.dart';
+import '../../../../controllers/shared/notification_controller.dart';
 
 // Remonter de 4 niveaux pour aller chercher les widgets partagés
 import '../../../../views/shared/widgets/loading_indicator.dart';
@@ -23,6 +23,7 @@ class ClientHomeView extends StatefulWidget {
 
 class _ClientHomeViewState extends State<ClientHomeView> {
   final TaskController _taskController = TaskController();
+  final NotificationController _notificationController = NotificationController();
 
   // Index de l'onglet actif (0 = Accueil, 1 = Profil)
   int _currentIndex = 0;
@@ -31,9 +32,11 @@ class _ClientHomeViewState extends State<ClientHomeView> {
   void initState() {
     super.initState();
     _taskController.addListener(_onTaskStateChanged);
+    _notificationController.addListener(_onNotificationStateChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _taskController.fetchTasks();
+      _notificationController.fetchNotifications();
     });
   }
 
@@ -41,10 +44,15 @@ class _ClientHomeViewState extends State<ClientHomeView> {
   void dispose() {
     _taskController.removeListener(_onTaskStateChanged);
     _taskController.dispose();
+    _notificationController.dispose();
     super.dispose();
   }
 
   void _onTaskStateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onNotificationStateChanged() {
     if (mounted) setState(() {});
   }
 
@@ -104,9 +112,9 @@ class _ClientHomeViewState extends State<ClientHomeView> {
               if (mounted) setState(() {});
             },
             icon: Badge(
-              isLabelVisible: MockData.getUnreadCount() > 0,
+              isLabelVisible: _notificationController.unreadCount > 0,
               label: Text(
-                '${MockData.getUnreadCount()}',
+                '${_notificationController.unreadCount}',
                 style: const TextStyle(fontSize: 10),
               ),
               backgroundColor: AppColors.error,

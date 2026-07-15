@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 // CORRECTION DE L'IMPORT : Remplacement par le chemin absolu de ton projet
 // (Remplace 'ton_nom_de_projet' par le nom exact écrit à la ligne 1 de ton pubspec.yaml)
-import 'package:freelance_front/controllers/auth_controller.dart';
+import 'package:freelance_front/controllers/auth/auth_controller.dart';
 
 class AppBottomNavigation extends StatelessWidget {
   final AuthController authController;

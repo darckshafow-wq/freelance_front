@@ -17,8 +17,6 @@ enum UserRole {
     }
   }
 
-  /// Calcule le rôle depuis les booléens renvoyés par le backend réel.
-  /// Utile lors de la migration depuis le système is_client/is_freelancer.
   static UserRole fromBooleans({
     bool isAdmin = false,
     bool isClient = false,
@@ -40,7 +38,6 @@ class UserModel {
   final String? phoneNumber;
   final DateTime? createdAt;
 
-  // Champs additionnels du backend réel
   final bool isActive;
   final bool isClient;
   final bool isFreelancer;
@@ -62,33 +59,62 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    // Support du champ 'role' string (mock + backend réel via /users/me)
-    // ET support des booléens is_client/is_freelancer (endpoint /users/{id})
     final UserRole role;
+
+    // Récupération sécurisée et typée du sous-objet 'roles'
+    final Map<String, dynamic>? rolesJson = json['roles'] is Map
+        ? Map<String, dynamic>.from(json['roles'] as Map)
+        : null;
+
     if (json['role'] != null) {
-      role = UserRole.fromString(json['role'] as String);
-    } else {
+      role = UserRole.fromString(json['role'].toString());
+    } else if (rolesJson != null) {
       role = UserRole.fromBooleans(
-        isAdmin: json['is_admin'] as bool? ?? false,
-        isClient: json['is_client'] as bool? ?? false,
-        isFreelancer: json['is_freelancer'] as bool? ?? false,
+        isAdmin: rolesJson['is_admin'] as bool? ?? false,
+        isClient: rolesJson['is_client'] as bool? ?? false,
+        isFreelancer: rolesJson['is_freelancer'] as bool? ?? false,
       );
+    } else {
+      role = UserRole.freelancer;
     }
 
+    final parsedId = int.tryParse(json['id']?.toString() ?? '') ?? 0;
+    print('=== DEBUG UserModel.fromJson ===');
+    print('Raw JSON id: ${json['id']}');
+    print('Parsed ID: $parsedId');
+    print('Raw JSON email: ${json['email']}');
+    print('=================================');
+
     return UserModel(
-      id: json['id'] as int,
-      email: json['email'] as String,
-      fullName: json['fullName'] ?? json['full_name'] ?? '',
+      id: parsedId,
+      email: (json['email'] ?? '').toString(),
+      fullName:
+          (json['full_name'] ??
+                  json['fullName'] ??
+                  json['pseudo'] ??
+                  json['name'] ??
+                  '')
+              .toString(),
       role: role,
-      phoneNumber: json['phoneNumber'] ?? json['phone_number'],
+      phoneNumber:
+          json['phoneNumber']?.toString() ?? json['phone_number']?.toString(),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
       isActive: json['is_active'] as bool? ?? true,
-      isClient: json['is_client'] as bool? ?? (role == UserRole.client),
+      isVerified: json['is_verified'] as bool? ?? false,
+      isClient:
+          rolesJson?['is_client'] as bool? ??
+          json['is_client'] as bool? ??
+          (role == UserRole.client),
       isFreelancer:
-          json['is_freelancer'] as bool? ?? (role == UserRole.freelancer),
-      isAdmin: json['is_admin'] as bool? ?? (role == UserRole.admin),
+          rolesJson?['is_freelancer'] as bool? ??
+          json['is_freelancer'] as bool? ??
+          (role == UserRole.freelancer),
+      isAdmin:
+          rolesJson?['is_admin'] as bool? ??
+          json['is_admin'] as bool? ??
+          (role == UserRole.admin),
     );
   }
 
@@ -108,6 +134,5 @@ class UserModel {
   }
 
   @override
-  String toString() =>
-      'UserModel(id: $id, email: $email, role: ${role.name})';
+  String toString() => 'UserModel(id: $id, email: $email, role: ${role.name})';
 }

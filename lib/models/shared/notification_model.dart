@@ -60,9 +60,14 @@ class NotificationModel {
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id'] as int,
-      title: json['title'] as String,
-      body: json['body'] as String,
-      type: NotificationType.fromString(json['type'] as String? ?? 'system'),
+      // Ton back n'envoie pas de titre, on met une valeur par défaut ou on réutilise le contenu
+      title: json['title'] as String? ?? 'Notification',
+      // On remplace 'body' par 'content' ou 'message' qui vient du backend
+      body: (json['content'] ?? json['message'] ?? json['body'] ?? '') as String,
+      // On remplace 'type' par 'review_type' qui vient du backend
+      type: NotificationType.fromString(
+        (json['review_type'] ?? json['type'] ?? 'system') as String,
+      ),
       isRead: json['is_read'] as bool? ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)

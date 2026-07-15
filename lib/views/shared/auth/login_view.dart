@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../controllers/auth_controller.dart';
+import '../../../controllers/auth/auth_controller.dart';
 import '../../../utils/validators.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';

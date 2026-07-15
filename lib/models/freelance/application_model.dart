@@ -39,15 +39,29 @@ class ApplicationModel {
   });
 
   factory ApplicationModel.fromJson(Map<String, dynamic> json) {
+    final dynamic rawStatus = json['status'] ?? json['application_status'];
+    final dynamic rawMessage =
+        json['message'] ??
+        json['cover_letter'] ??
+        json['coverLetter'] ??
+        json['cover_letter'];
+    final dynamic rawTaskId = json['task_id'] ?? json['taskId'];
+    final dynamic rawFreelancerId =
+        json['freelance_id'] ?? json['freelancer_id'] ?? json['freelancerId'];
+    final dynamic rawBudget =
+        json['proposed_budget'] ?? json['proposedBudget'] ?? json['budget'];
+
     return ApplicationModel(
-      id: json['id'] as int,
-      taskId: json['taskId'] ?? json['task_id'] ?? 0,
-      freelancerId: json['freelancerId'] ?? json['freelancer_id'] ?? 0,
-      coverLetter: json['coverLetter'] ?? json['cover_letter'] ?? '',
-      proposedBudget: (json['proposedBudget'] ?? json['proposed_budget'] as num?)?.toDouble() ?? 0.0,
-      status: ApplicationStatus.fromString(json['status'] as String? ?? 'pending'),
-      createdAt: json['createdAt'] ?? json['created_at'] != null 
-          ? DateTime.parse(json['createdAt'] ?? json['created_at']) 
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      taskId: int.tryParse(rawTaskId?.toString() ?? '0') ?? 0,
+      freelancerId: int.tryParse(rawFreelancerId?.toString() ?? '0') ?? 0,
+      coverLetter: rawMessage?.toString() ?? '',
+      proposedBudget: (rawBudget as num?)?.toDouble() ?? 0.0,
+      status: ApplicationStatus.fromString(rawStatus?.toString() ?? 'pending'),
+      createdAt: json['createdAt'] ?? json['created_at'] != null
+          ? DateTime.tryParse(
+              (json['createdAt'] ?? json['created_at']).toString(),
+            )
           : null,
     );
   }

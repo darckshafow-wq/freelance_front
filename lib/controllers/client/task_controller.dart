@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/task_model.dart';
-import '../services/api/api_core.dart';
-import '../services/api/api_endpoints.dart';
+import '../../models/client/task_model.dart';
+import '../../services/api/api_core.dart';
+import '../../services/api/api_endpoints.dart';
 
 class TaskController extends ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
@@ -30,7 +30,7 @@ class TaskController extends ChangeNotifier {
     _setError(null);
 
     final response = await _apiClient.get<List<TaskModel>>(
-      endpoint: ApiEndpoints.tasks,
+      endpoint: ApiEndpoints.clientTasks,
       parser: (json) {
         if (json is List) {
           return json.map((item) => TaskModel.fromJson(item as Map<String, dynamic>)).toList();
@@ -66,7 +66,7 @@ class TaskController extends ChangeNotifier {
     };
 
     final response = await _apiClient.post<TaskModel>(
-      endpoint: ApiEndpoints.tasks,
+      endpoint: ApiEndpoints.clientTasks,
       body: body,
       parser: (json) => TaskModel.fromJson(json as Map<String, dynamic>),
     );
@@ -89,7 +89,7 @@ class TaskController extends ChangeNotifier {
     _setError(null);
 
     final response = await _apiClient.put<TaskModel>(
-      endpoint: ApiEndpoints.taskDetail(taskId),
+      endpoint: ApiEndpoints.clientTaskDetail(taskId),
       body: updates,
       parser: (json) => TaskModel.fromJson(json as Map<String, dynamic>),
     );
@@ -115,7 +115,7 @@ class TaskController extends ChangeNotifier {
     _setError(null);
 
     final response = await _apiClient.delete<Map<String, dynamic>>(
-      endpoint: ApiEndpoints.taskDetail(taskId),
+      endpoint: ApiEndpoints.clientTaskDetail(taskId),
       parser: (json) => json as Map<String, dynamic>,
     );
 

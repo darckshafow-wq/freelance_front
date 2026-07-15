@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../models/notification.dart';
+import '../../../../models/shared/notification_model.dart';
 
 // ─── Palette FreelancePage ────────────────────────────────────────────────────
 const Color _kBg = Color(0xFFFDFBF7);
@@ -15,30 +15,62 @@ class DetailleNotificationView extends StatelessWidget {
   _NotifMeta _metaFor(NotificationType type) {
     switch (type) {
       case NotificationType.newApplication:
-        return _NotifMeta(Icons.person_add_outlined, _kAmber, 'Candidature reçue');
+        return _NotifMeta(
+          Icons.person_add_outlined,
+          _kAmber,
+          'Candidature reçue',
+        );
       case NotificationType.applicationAccepted:
-        return _NotifMeta(Icons.check_circle_outline, _kGreen, 'Candidature acceptée');
+        return _NotifMeta(
+          Icons.check_circle_outline,
+          _kGreen,
+          'Candidature acceptée',
+        );
       case NotificationType.applicationRejected:
         return _NotifMeta(Icons.cancel_outlined, _kRed, 'Candidature refusée');
       case NotificationType.missionValidated:
         return _NotifMeta(Icons.verified_outlined, _kAmber, 'Mission validée');
       case NotificationType.missionCompleted:
-        return _NotifMeta(Icons.flag_outlined, _kAmberLight, 'Mission terminée');
+        return _NotifMeta(
+          Icons.flag_outlined,
+          _kAmberLight,
+          'Mission terminée',
+        );
       case NotificationType.newMessage:
-        return _NotifMeta(Icons.chat_bubble_outline, _kAmber, 'Nouveau message');
+        return _NotifMeta(
+          Icons.chat_bubble_outline,
+          _kAmber,
+          'Nouveau message',
+        );
       case NotificationType.paymentReceived:
         return _NotifMeta(
-            Icons.account_balance_wallet_outlined, _kGreen, 'Paiement reçu');
+          Icons.account_balance_wallet_outlined,
+          _kGreen,
+          'Paiement reçu',
+        );
       case NotificationType.system:
         return _NotifMeta(
-            Icons.info_outline, const Color(0xFF8D8D8D), 'Notification système');
+          Icons.info_outline,
+          const Color(0xFF8D8D8D),
+          'Notification système',
+        );
     }
   }
 
   String _formatDate(DateTime dt) {
     final months = [
-      'jan.', 'fév.', 'mar.', 'avr.', 'mai', 'juin',
-      'juil.', 'août', 'sep.', 'oct.', 'nov.', 'déc.',
+      'jan.',
+      'fév.',
+      'mar.',
+      'avr.',
+      'mai',
+      'juin',
+      'juil.',
+      'août',
+      'sep.',
+      'oct.',
+      'nov.',
+      'déc.',
     ];
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
@@ -56,8 +88,10 @@ class DetailleNotificationView extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.white,
           iconTheme: const IconThemeData(color: _kDark),
-          title: const Text('Notification',
-              style: TextStyle(color: _kDark, fontWeight: FontWeight.w800)),
+          title: const Text(
+            'Notification',
+            style: TextStyle(color: _kDark, fontWeight: FontWeight.w800),
+          ),
           elevation: 0,
         ),
         body: const Center(child: Text('Notification introuvable.')),
@@ -114,7 +148,9 @@ class DetailleNotificationView extends StatelessWidget {
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.30),
                       borderRadius: BorderRadius.circular(20),
@@ -142,8 +178,11 @@ class DetailleNotificationView extends StatelessWidget {
                   // Date
                   Row(
                     children: [
-                      const Icon(Icons.access_time_outlined,
-                          size: 14, color: Colors.black38),
+                      const Icon(
+                        Icons.access_time_outlined,
+                        size: 14,
+                        color: Colors.black38,
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         _formatDate(notif.createdAt),
@@ -218,8 +257,7 @@ class DetailleNotificationView extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          shadowColor:
-                              _kAmber.withValues(alpha: 0.3),
+                          shadowColor: _kAmber.withValues(alpha: 0.3),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,

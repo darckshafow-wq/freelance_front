@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../controllers/auth_controller.dart';
-import 'app_bottom_navigation.dart.dart';
+import '../../../controllers/auth/auth_controller.dart';
+import 'app_bottom_navigation.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget body;

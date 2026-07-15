@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../controllers/notification_controller.dart';
-import '../../../../models/notification.dart';
+import '../../../../controllers/shared/notification_controller.dart';
+import '../../../../models/shared/notification_model.dart';
 
 // ─── Palette FreelancePage ────────────────────────────────────────────────────
 const Color _kBg = Color(0xFFFDFBF7);
@@ -27,7 +27,9 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
     _ctrl.addListener(_refresh);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _ctrl.fetchNotifications());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _ctrl.fetchNotifications(),
+    );
   }
 
   @override
@@ -58,9 +60,17 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
       case NotificationType.newMessage:
         return _NotifMeta(Icons.chat_bubble_outline, _kAmber, 'Message');
       case NotificationType.paymentReceived:
-        return _NotifMeta(Icons.account_balance_wallet_outlined, _kGreen, 'Paiement');
+        return _NotifMeta(
+          Icons.account_balance_wallet_outlined,
+          _kGreen,
+          'Paiement',
+        );
       case NotificationType.system:
-        return _NotifMeta(Icons.info_outline, const Color(0xFF8D8D8D), 'Système');
+        return _NotifMeta(
+          Icons.info_outline,
+          const Color(0xFF8D8D8D),
+          'Système',
+        );
     }
   }
 
@@ -112,7 +122,9 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: notif.isRead ? 0.03 : 0.06),
+                color: Colors.black.withValues(
+                  alpha: notif.isRead ? 0.03 : 0.06,
+                ),
                 blurRadius: notif.isRead ? 8 : 16,
                 offset: const Offset(0, 4),
               ),
@@ -144,7 +156,9 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
                           // Badge type
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: meta.color.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -228,8 +242,11 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
               color: _kAmber.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.notifications_none_outlined,
-                size: 40, color: _kAmber),
+            child: const Icon(
+              Icons.notifications_none_outlined,
+              size: 40,
+              color: _kAmber,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -276,8 +293,7 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
             if (unread > 0) ...[
               const SizedBox(width: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: _kAmber,
                   borderRadius: BorderRadius.circular(20),
@@ -316,8 +332,10 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
             unselectedLabelColor: Colors.black45,
             indicatorColor: _kAmber,
             indicatorWeight: 2.5,
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
             tabs: [
               Tab(
                 child: Row(
@@ -328,7 +346,9 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: _kAmber.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
@@ -353,69 +373,67 @@ class _ListeNotificationViewState extends State<ListeNotificationView>
       ),
 
       body: _ctrl.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: _kAmber),
-            )
+          ? const Center(child: CircularProgressIndicator(color: _kAmber))
           : _ctrl.errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off_outlined,
-                          size: 48, color: Colors.black26),
-                      const SizedBox(height: 12),
-                      Text(
-                        _ctrl.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.black54),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.wifi_off_outlined,
+                    size: 48,
+                    color: Colors.black26,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _ctrl.errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _ctrl.fetchNotifications,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Réessayer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kAmber,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _ctrl.fetchNotifications,
-                        icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text('Réessayer'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kAmber,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
+                      elevation: 0,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              color: _kAmber,
+              backgroundColor: Colors.white,
+              onRefresh: _ctrl.fetchNotifications,
+              child: TabBarView(
+                controller: _tabCtrl,
+                children: [
+                  // Onglet Non lues
+                  _ctrl.unread.isEmpty
+                      ? _buildEmpty()
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 12, bottom: 32),
+                          itemCount: _ctrl.unread.length,
+                          itemBuilder: (_, i) => _buildTile(_ctrl.unread[i]),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  color: _kAmber,
-                  backgroundColor: Colors.white,
-                  onRefresh: _ctrl.fetchNotifications,
-                  child: TabBarView(
-                    controller: _tabCtrl,
-                    children: [
-                      // Onglet Non lues
-                      _ctrl.unread.isEmpty
-                          ? _buildEmpty()
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(
-                                  top: 12, bottom: 32),
-                              itemCount: _ctrl.unread.length,
-                              itemBuilder: (_, i) =>
-                                  _buildTile(_ctrl.unread[i]),
-                            ),
-                      // Onglet Toutes
-                      _ctrl.notifications.isEmpty
-                          ? _buildEmpty()
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(
-                                  top: 12, bottom: 32),
-                              itemCount: _ctrl.notifications.length,
-                              itemBuilder: (_, i) =>
-                                  _buildTile(_ctrl.notifications[i]),
-                            ),
-                    ],
-                  ),
-                ),
+                  // Onglet Toutes
+                  _ctrl.notifications.isEmpty
+                      ? _buildEmpty()
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 12, bottom: 32),
+                          itemCount: _ctrl.notifications.length,
+                          itemBuilder: (_, i) =>
+                              _buildTile(_ctrl.notifications[i]),
+                        ),
+                ],
+              ),
+            ),
     );
   }
 }

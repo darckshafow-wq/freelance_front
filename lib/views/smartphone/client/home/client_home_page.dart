@@ -62,7 +62,7 @@ class ClientHomePage extends StatelessWidget {
                     Text(
                       'Voici un aperçu de vos missions, de leurs statuts et des candidatures reçues.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         height: 1.45,
                       ),
                     ),
@@ -291,7 +291,7 @@ class _MissionPreviewCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: badgeColor.withOpacity(0.12),
+              color: badgeColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(

@@ -1,15 +1,41 @@
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
-import '../../../../services/api/mock_data.dart';
 import '../../../../routes/app_router.dart';
+import '../../../../controllers/auth/auth_controller.dart';
+import '../../../../controllers/shared/notification_controller.dart';
+import '../../../../controllers/freelance/task_controller.dart';
+// Importations de tes vrais fichiers
+import '../../../../models/client/task_model.dart';
 
-class FreelanceHomePage extends StatelessWidget {
-  const FreelanceHomePage({super.key});
+class FreelanceHomePage extends StatefulWidget {
+  final AuthController? authController;
+
+  const FreelanceHomePage({super.key, this.authController});
+
+  @override
+  State<FreelanceHomePage> createState() => _FreelanceHomePageState();
+}
+
+class _FreelanceHomePageState extends State<FreelanceHomePage> {
+  // Instance unique du contrôleur pour cette vue
+  final FreelanceTaskController _taskController = FreelanceTaskController();
+  final NotificationController _notificationController =
+      NotificationController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _taskController.fetchHomeTasks();
+      _notificationController.fetchNotifications();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFBF7), // Fond beige très clair
+      backgroundColor: const Color(0xFFFDFBF7),
       appBar: AppBar(
         title: const Text(
           'Missions disponibles',
@@ -27,14 +53,19 @@ class FreelanceHomePage extends StatelessWidget {
             onPressed: () async {
               await Navigator.pushNamed(context, AppRoutes.notifications);
             },
-            icon: Badge(
-              isLabelVisible: MockData.getUnreadCount() > 0,
-              label: Text(
-                '${MockData.getUnreadCount()}',
-                style: const TextStyle(fontSize: 10),
-              ),
-              backgroundColor: AppColors.error,
-              child: const Icon(Icons.notifications_outlined),
+            icon: AnimatedBuilder(
+              animation: _notificationController,
+              builder: (context, _) {
+                return Badge(
+                  isLabelVisible: _notificationController.unreadCount > 0,
+                  label: Text(
+                    '${_notificationController.unreadCount}',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  backgroundColor: AppColors.error,
+                  child: const Icon(Icons.notifications_outlined),
+                );
+              },
             ),
           ),
         ],
@@ -78,76 +109,115 @@ class FreelanceHomePage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              _MissionCard(
-                title: 'Landing page moderne',
-                description:
-                    'Conception d\'une interface épurée et réactive avec animations fluides pour une startup FinTech.',
-                budget: '800 €',
-                clientName: 'TechStart Studio',
-                duration: '10 jours',
-                tags: const ['UI/UX', 'Remote', 'Urgent', 'Figma'],
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/freelance/job-detail',
-                    arguments: {
-                      'title': 'Landing page moderne',
-                      'budget': '800 €',
-                      'clientName': 'TechStart Studio',
-                      'duration': '10 jours',
-                      'description':
-                          'Nous recherchons un développeur Front-End pour concevoir et intégrer la nouvelle landing page de notre solution FinTech. Le design Figma est déjà finalisé — votre rôle sera de lui donner vie avec des animations fluides.',
-                      'tags': ['UI/UX', 'Remote', 'Urgent', 'Figma'],
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              _MissionCard(
-                title: 'Refonte mobile UI',
-                description:
-                    'Amélioration de l\'expérience utilisateur globale sur une application de livraison e-commerce existante.',
-                budget: '1 200 €',
-                clientName: 'DeliverX',
-                duration: '21 jours',
-                tags: const ['Flutter', 'Design system', 'Mobile'],
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/freelance/job-detail',
-                    arguments: {
-                      'title': 'Refonte mobile UI',
-                      'budget': '1 200 €',
-                      'clientName': 'DeliverX',
-                      'duration': '21 jours',
-                      'description':
-                          'Amélioration de l\'expérience utilisateur globale sur une application de livraison e-commerce existante. Design system à respecter, composants à refactoriser.',
-                      'tags': ['Flutter', 'Design system', 'Mobile'],
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              _MissionCard(
-                title: 'Audit sécurité Cloud AWS',
-                description:
-                    'Audit complet de la configuration AWS, politiques IAM et bases de données. Livraison d\'un rapport de vulnérabilités.',
-                budget: '4 000 €',
-                clientName: 'SecureOps',
-                duration: '14 jours',
-                tags: const ['AWS', 'Sécurité', 'DevOps'],
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/freelance/job-detail',
-                    arguments: {
-                      'title': 'Audit sécurité Cloud AWS',
-                      'budget': '4 000 €',
-                      'clientName': 'SecureOps',
-                      'duration': '14 jours',
-                      'description':
-                          'Audit complet de la configuration AWS, politiques IAM et bases de données MySQL. Fournir un rapport détaillé des vulnérabilités avec recommandations correctives.',
-                      'tags': ['AWS', 'Sécurité', 'DevOps'],
+              // ÉCOUTE DU CONTRÔLEUR VIA LISTENABLEBUILDER
+              ListenableBuilder(
+                listenable: _taskController,
+                builder: (context, child) {
+                  // Écran de chargement
+                  if (_taskController.isLoading) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFFB000),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Gestion de l'erreur renvoyée par le serveur
+                  if (_taskController.errorMessage != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              _taskController.errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: () => _taskController.fetchHomeTasks(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFB000),
+                              ),
+                              child: const Text(
+                                'Réessayer',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Liste vide
+                  if (_taskController.homeTasks.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: Text(
+                          "Aucune mission disponible pour le moment.",
+                          style: TextStyle(color: Colors.black45, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Affichage dynamique des données réelles de la DB
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _taskController.homeTasks.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 24),
+                    itemBuilder: (context, index) {
+                      final TaskModel task = _taskController.homeTasks[index];
+
+                      return _MissionCard(
+                        title: task.title,
+                        description: task.description.isNotEmpty
+                            ? task.description
+                            : 'Mission publiée sur la plateforme.',
+                        budget: '${task.budget.toStringAsFixed(0)} F CFA',
+                        clientName: task.clientId > 0
+                            ? 'Client #${task.clientId}'
+                            : 'Client partenaire',
+                        duration: task.deadline != null
+                            ? '${task.deadline!.difference(DateTime.now()).inDays} jours restants'
+                            : (task.location?.isNotEmpty == true
+                                  ? task.location!
+                                  : 'Flexible'),
+                        tags: [
+                          task.location?.isNotEmpty == true
+                              ? task.location!
+                              : 'Remote',
+                          task.status.name.toUpperCase(),
+                        ],
+                        onTap: () {
+                          if (!mounted) return;
+                          Navigator.pushNamed(
+                            context,
+                            '/freelance/job-detail',
+                            arguments: {
+                              'id': task.id,
+                              'title': task.title,
+                              'description': task.description,
+                              'budget':
+                                  '${task.budget.toStringAsFixed(0)} F CFA',
+                              'deadline': task.deadline?.toIso8601String(),
+                              'clientId': task.clientId,
+                              'location': task.location,
+                            },
+                          );
+                        },
+                      );
                     },
                   );
                 },
@@ -159,11 +229,10 @@ class FreelanceHomePage extends StatelessWidget {
     );
   }
 
-  // --- NOUVELLE SIDEBAR (DRAWER) AMÉLIORÉE ---
+  // --- TON DRAWER RESTE IDENTIQUE ---
   Drawer _buildDrawer(BuildContext context) {
     return Drawer(
       backgroundColor: Colors.white,
-      // Donne un effet arrondi unique au tiroir sur le côté droit
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topRight: Radius.circular(32),
@@ -172,7 +241,6 @@ class FreelanceHomePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // En-tête personnalisé et moderne (Plus propre que UserAccountsDrawerHeader)
           Container(
             padding: const EdgeInsets.only(
               top: 60,
@@ -180,7 +248,7 @@ class FreelanceHomePage extends StatelessWidget {
               right: 24,
               bottom: 24,
             ),
-            color: const Color(0xFFFDFBF7), // Match avec le fond de l'app
+            color: const Color(0xFFFDFBF7),
             child: Row(
               children: [
                 Container(
@@ -221,7 +289,9 @@ class FreelanceHomePage extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFB000).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFFFFB000,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
@@ -240,8 +310,6 @@ class FreelanceHomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Corps du menu
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -249,24 +317,54 @@ class FreelanceHomePage extends StatelessWidget {
                 _buildDrawerItem(
                   icon: Icons.space_dashboard_outlined,
                   title: 'Accueil',
-                  isActive: true, // Item sélectionné
+                  isActive: true,
                   onTap: () => Navigator.pop(context),
                 ),
                 _buildDrawerItem(
                   icon: Icons.assignment_turned_in_outlined,
                   title: 'Candidatures',
-                  badgeCount: 3, // Badge de notification ajouté
+                  badgeCount: 3,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.pushNamed(context, '/freelance/applications');
                   },
                 ),
                 _buildDrawerItem(
-                  icon: Icons.account_circle_outlined,
-                  title: 'Mon Profil',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  title: 'Messages',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.pushNamed(context, '/freelance/profile');
+                    // Ouvre le chat vers un contact existant
+                    // Par défaut otherUserId=0 → affiche écran vide avec invite
+                    Navigator.pushNamed(
+                      context,
+                      '/freelance/chat',
+                      arguments: const {
+                        'otherUserId': 2,
+                        'otherUserName': 'Client',
+                      },
+                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.account_circle_outlined,
+                  title: 'Mon Profil',
+                  onTap: () async {
+                    Navigator.pop(context);
+
+                    final fallbackId = widget.authController?.currentUser?.id;
+                    final userId = fallbackId != null && fallbackId > 0
+                        ? fallbackId.toString()
+                        : 'me';
+
+                    await Navigator.pushNamed(
+                      context,
+                      '/freelance/profile',
+                      arguments: {
+                        'userId': userId,
+                        'authController': widget.authController,
+                      },
+                    );
                   },
                 ),
                 _buildDrawerItem(
@@ -282,8 +380,6 @@ class FreelanceHomePage extends StatelessWidget {
               ],
             ),
           ),
-
-          // Bas de la Sidebar (Zone Déconnexion isolée)
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: InkWell(
@@ -329,7 +425,6 @@ class FreelanceHomePage extends StatelessWidget {
     );
   }
 
-  // Helper pour concevoir des lignes de menu épurées rapidement
   Widget _buildDrawerItem({
     required IconData icon,
     required String title,
@@ -338,7 +433,6 @@ class FreelanceHomePage extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     final activeColor = const Color(0xFFFFB000);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: ListTile(
@@ -378,7 +472,7 @@ class FreelanceHomePage extends StatelessWidget {
   }
 }
 
-// Carte de mission affichée sur la page d'accueil freelance
+// --- TON CARD COMPONENT ---
 class _MissionCard extends StatelessWidget {
   const _MissionCard({
     required this.title,
@@ -488,13 +582,14 @@ class _MissionCard extends StatelessWidget {
                                   color: Color(0xFFFFB000),
                                 ),
                               ),
-                              const Text(
-                                '+ validation rapide',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.black38,
+                              if (duration != null)
+                                Text(
+                                  duration!,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.black38,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                           Container(

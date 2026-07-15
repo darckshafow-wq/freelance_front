@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 // Remonter de 4 niveaux pour aller chercher les contrôleurs et constantes
-import '../../../../controllers/auth_controller.dart';
+import '../../../../controllers/auth/auth_controller.dart';
+import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
 
 class CreateMissionView extends StatefulWidget {
@@ -15,6 +16,7 @@ class CreateMissionView extends StatefulWidget {
 
 class _CreateMissionViewState extends State<CreateMissionView> {
   final _formKey = GlobalKey<FormState>();
+  final TaskController _taskController = TaskController();
 
   // Contrôleurs de saisie
   final TextEditingController _titleController = TextEditingController();
@@ -63,10 +65,14 @@ class _CreateMissionViewState extends State<CreateMissionView> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Simulation d'un délai réseau
-      await Future.delayed(const Duration(seconds: 1));
+      final success = await _taskController.createTask(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        budget: double.parse(_budgetController.text.trim()),
+        deadline: _selectedDeadline,
+      );
 
-      if (mounted) {
+      if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('La mission a été créée avec succès ! 🎉'),

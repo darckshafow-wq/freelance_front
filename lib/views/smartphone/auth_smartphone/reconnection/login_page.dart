@@ -3,8 +3,9 @@ import '../../../../constants/app_colors.dart';
 import 'forget_password_page.dart';
 import 'verification_page.dart';
 import '../creation/role_selection_page.dart';
-import '../../../../controllers/auth_controller.dart';
-import '../../../../models/user_model.dart';
+import '../../../../controllers/auth/auth_controller.dart';
+import '../../../../models/auth/user_model.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -43,9 +44,11 @@ class _LoginPageState extends State<LoginPage> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.16)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
                     Text(
                       'Accédez à votre espace en quelques secondes.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -81,9 +84,11 @@ class _LoginPageState extends State<LoginPage> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.1),
+                          color: Colors.redAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                          border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Text(
                           _errorMessage!,
@@ -101,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.white70,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.12),
+                        fillColor: Colors.white.withValues(alpha: 0.12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -121,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.white70,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.12),
+                        fillColor: Colors.white.withValues(alpha: 0.12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -157,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
                                   _isLoading = true;
                                   _errorMessage = null;
                                 });
-                                
+
                                 // Import the AuthController & UserModel if not imported at top
                                 // We'll add imports at the top
                                 final authController = AuthController();
@@ -165,29 +170,32 @@ class _LoginPageState extends State<LoginPage> {
                                   _emailController.text,
                                   _passwordController.text,
                                 );
-                                
+
                                 if (!context.mounted) return;
-                                
+
                                 if (success) {
                                   final user = authController.currentUser;
                                   final role = user?.role;
-                                  
+
                                   // DEBUG
                                   print("=== DEBUG LOGIN ===");
                                   print("User email: ${user?.email}");
                                   print("User role: $role");
-                                  print("Raw flags - isAdmin: ${user?.isAdmin}, isClient: ${user?.isClient}, isFreel: ${user?.isFreelancer}");
+                                  print(
+                                    "Raw flags - isAdmin: ${user?.isAdmin}, isClient: ${user?.isClient}, isFreel: ${user?.isFreelancer}",
+                                  );
                                   print("=====================");
 
                                   if (user != null && !user.isVerified) {
                                     // Demande de l'OTP
                                     await authController.sendOtp(user.email);
                                     if (!context.mounted) return;
-                                    
+
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => VerificationPage(email: user.email),
+                                        builder: (_) =>
+                                            VerificationPage(email: user.email),
                                       ),
                                     );
                                     return;
@@ -219,7 +227,9 @@ class _LoginPageState extends State<LoginPage> {
                                 } else {
                                   setState(() {
                                     _isLoading = false;
-                                    _errorMessage = authController.errorMessage ?? 'Erreur de connexion';
+                                    _errorMessage =
+                                        authController.errorMessage ??
+                                        'Erreur de connexion';
                                   });
                                 }
                               },
@@ -231,11 +241,14 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: _isLoading 
+                        child: _isLoading
                             ? const SizedBox(
-                                height: 20, 
-                                width: 20, 
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Se connecter'),
                       ),

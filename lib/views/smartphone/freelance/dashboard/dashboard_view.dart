@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../controllers/auth_controller.dart';
-import '../../../../controllers/task_controller.dart';
+import '../../../../controllers/auth/auth_controller.dart';
+import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
-import '../../../../models/task_model.dart';
+import '../../../../models/client/task_model.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/main_layout.dart';
 

@@ -35,9 +35,11 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.16)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +64,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                     Text(
                       'Saisissez votre adresse email pour recevoir un lien de réinitialisation.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -79,7 +81,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                           color: Colors.white70,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.12),
+                        fillColor: Colors.white.withValues(alpha: 0.12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,

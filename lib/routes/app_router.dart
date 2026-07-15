@@ -1,46 +1,77 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app_router.dart
+// Point d'entrée central du routage de l'application.
+//
+// Ce fichier :
+//   1. Déclare toutes les constantes de routes PUBLIQUES (landing, login, etc.)
+//   2. Délègue les routes privées à :
+//        - FreelanceRoutes  →  freelance_routes.dart
+//        - ClientRoutes     →  client_routes.dart
+//        - AdminRoutes      →  admin_routes.dart
+//
+// Usage depuis n'importe quelle vue :
+//   Navigator.pushNamed(context, AppRouteNames.login);
+//   Navigator.pushNamed(context, FreelanceRouteNames.profile, arguments: {'userId': 42});
+//   Navigator.pushNamed(context, ClientRouteNames.createMission, arguments: authController);
+// ─────────────────────────────────────────────────────────────────────────────
+
 import 'package:flutter/material.dart';
 
-// Controllers et Modèles
-import '../controllers/auth_controller.dart';
-import '../models/user_model.dart';
-import '../services/api/api_core.dart';
-import '../services/api/mock_data.dart';
+// Sous-routeurs par rôle
+import 'freelance_routes.dart';
+import 'client_routes.dart';
+import 'admin_routes.dart';
 
-// Vues d'authentification et Onboarding
+// Vues publiques / partagées
 import '../views/smartphone/onbor/landing.dart';
-
-// Vues Client (Home & Missions)
-import '../views/smartphone/client/home/client_home_view.dart';
-import '../views/smartphone/client/missions/create_mission_view.dart';
-import '../views/smartphone/client/missions/mission_detail_view.dart';
-import '../views/smartphone/client/home/client_home_page.dart';
-import '../views/smartphone/client/missions/client_missions_page.dart';
-import '../views/smartphone/client/profile/client_profile_page.dart';
-
-// Vues Freelance
-import '../views/smartphone/freelance/dashboard/dashboard_view.dart';
-import '../views/smartphone/freelance/home/freelance_home_page.dart';
-import '../views/smartphone/freelance/applications/freelance_applications_page.dart';
-import '../views/smartphone/freelance/profile/freelance_profile_page.dart';
-import '../views/smartphone/freelance/tasks/detaille_task.dart';
-
-// Auth smartphone
 import '../views/smartphone/auth_smartphone/reconnection/login_page.dart';
 import '../views/smartphone/auth_smartphone/reconnection/verification_page.dart';
 import '../views/smartphone/auth_smartphone/reconnection/forget_password_page.dart';
 import '../views/smartphone/auth_smartphone/creation/create_account_page.dart';
 import '../views/smartphone/auth_smartphone/creation/role_selection_page.dart';
-
-// Notifications
 import '../views/smartphone/notification/liste_notification.dart';
 import '../views/smartphone/notification/detaille_notification.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page d'erreur d'accès refusé
+// Constantes des routes PUBLIQUES (accessibles sans authentification)
 // ─────────────────────────────────────────────────────────────────────────────
-class _AccessDeniedPage extends StatelessWidget {
+class AppRouteNames {
+  AppRouteNames._();
+
+  /// Page d'accueil / Onboarding
+  static const String landing = '/landing';
+
+  /// Page de connexion
+  static const String login = '/login';
+
+  /// Inscription (alias de createAccount)
+  static const String register = '/register';
+
+  /// Création de compte — attend un [String] (role) en argument
+  static const String createAccount = '/create-account';
+
+  /// Sélection du rôle (client ou freelance)
+  static const String roleSelection = '/role-selection';
+
+  /// Vérification du code OTP — attend un [String] (email) en argument
+  static const String verification = '/verification';
+
+  /// Mot de passe oublié
+  static const String forgetPassword = '/forget-password';
+
+  /// Liste des notifications (toutes les rôles)
+  static const String notifications = '/notifications';
+
+  /// Détail d'une notification (toutes les rôles)
+  static const String notificationDetail = '/notifications/detail';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page affichée en cas d'accès refusé
+// ─────────────────────────────────────────────────────────────────────────────
+class AccessDeniedPage extends StatelessWidget {
   final String reason;
-  const _AccessDeniedPage({required this.reason});
+  const AccessDeniedPage({super.key, required this.reason});
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +107,7 @@ class _AccessDeniedPage extends StatelessWidget {
               ElevatedButton(
                 onPressed: () => Navigator.pushNamedAndRemoveUntil(
                   context,
-                  '/login',
+                  AppRouteNames.login,
                   (route) => false,
                 ),
                 style: ElevatedButton.styleFrom(
@@ -104,76 +135,63 @@ class _AccessDeniedPage extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Router principal avec guards de sécurité basés sur le rôle
+// Routeur principal — AppRoutes
 // ─────────────────────────────────────────────────────────────────────────────
 class AppRoutes {
-  static const String landing = '/landing';
-  static const String login = '/login';
-  static const String register = '/register';
-  static const String dashboard = '/dashboard';
-  static const String freelanceDashboard = '/freelance/dashboard';
-  static const String clientHome = '/client/home';
-  static const String clientMissions = '/client/missions';
-  static const String clientProfile = '/client/profile';
-  static const String freelanceHome = '/freelance/home';
-  static const String freelanceApplications = '/freelance/applications';
-  static const String freelanceProfile = '/freelance/profile';
-  static const String verification = '/verification';
-  static const String forgetPassword = '/forget-password';
-  static const String createAccount = '/create-account';
-  static const String roleSelection = '/role-selection';
-  static const String freelanceJobDetailPage = '/freelance/job-detail';
-  static const String missionDetail =
-      '/smartphone/client/missions/mission_detail_view';
-  static const String createMission =
-      '/smartphone/client/missions/create_mission_view';
-  static const String notifications = '/notifications';
-  static const String notificationDetail = '/notifications/detail';
+  AppRoutes._();
 
-  // ────────────────────────────────────────────────────────
-  // Guard central : FORCÉ POUR LES TESTS
-  // Retourne toujours null pour laisser passer toutes les pages
-  // ────────────────────────────────────────────────────────
-  static Route<dynamic>? _checkAccess(
-    RouteSettings settings, {
-    UserRole? requiredRole,
-  }) {
-    return null; // ACCÈS FORCÉ : Laisse passer sans vérification de token ou de rôle
-  }
+  // ── Redirige les constantes pour rétrocompatibilité ───────────────────────
+  // (évite de casser les fichiers qui utilisaient encore AppRoutes.landing etc.)
+  static const String landing = AppRouteNames.landing;
+  static const String login = AppRouteNames.login;
+  static const String register = AppRouteNames.register;
+  static const String verification = AppRouteNames.verification;
+  static const String forgetPassword = AppRouteNames.forgetPassword;
+  static const String createAccount = AppRouteNames.createAccount;
+  static const String roleSelection = AppRouteNames.roleSelection;
+  static const String notifications = AppRouteNames.notifications;
+  static const String notificationDetail = AppRouteNames.notificationDetail;
 
-  // ────────────────────────────────────────────────────────
-  // Helper pour construire des routes sécurisées proprement
-  // ────────────────────────────────────────────────────────
-  static Route<dynamic> _guard({
-    required RouteSettings settings,
-    required Widget Function() builder,
-    UserRole? requiredRole,
-  }) {
-    final denied = _checkAccess(settings, requiredRole: requiredRole);
-    if (denied != null) return denied;
-    return MaterialPageRoute(builder: (_) => builder(), settings: settings);
-  }
+  // Routes Freelance (rétrocompatibilité)
+  static const String freelanceHome = FreelanceRouteNames.home;
+  static const String freelanceDashboard = FreelanceRouteNames.dashboard;
+  static const String freelanceApplications = FreelanceRouteNames.applications;
+  static const String freelanceProfile = FreelanceRouteNames.profile;
+  static const String freelanceJobDetailPage = FreelanceRouteNames.jobDetail;
 
-  // ────────────────────────────────────────────────────────
-  // Générateur de routes
-  // ────────────────────────────────────────────────────────
+  // Routes Client (rétrocompatibilité)
+  static const String clientHome = ClientRouteNames.home;
+  static const String clientMissions = ClientRouteNames.missions;
+  static const String clientProfile = ClientRouteNames.profile;
+  static const String dashboard = ClientRouteNames.dashboard;
+  static const String createMission = ClientRouteNames.createMission;
+  static const String missionDetail = ClientRouteNames.missionDetail;
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // generateRoute — Délègue dans l'ordre :
+  //   1. Routes publiques (gérées ici)
+  //   2. Routes Freelance  →  FreelanceRoutes.generate()
+  //   3. Routes Client     →  ClientRoutes.generate()
+  //   4. Routes Admin      →  AdminRoutes.generate()
+  //   5. Fallback 404
+  // ────────────────────────────────────────────────────────────────────────────
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    // ── 1. Routes Publiques ──────────────────────────────────────────────────
     switch (settings.name) {
-      // ── Routes publiques ─────────────────────────────────
-      case landing:
+      case AppRouteNames.landing:
         return MaterialPageRoute(
           builder: (_) => const LandingView(),
           settings: settings,
         );
 
-      case login:
+      case AppRouteNames.login:
         return MaterialPageRoute(
           builder: (_) => const LoginPage(),
           settings: settings,
         );
 
-      case register:
-      case createAccount:
+      case AppRouteNames.register:
+      case AppRouteNames.createAccount:
         return MaterialPageRoute(
           builder: (_) {
             final role = settings.arguments as String? ?? 'client';
@@ -182,7 +200,7 @@ class AppRoutes {
           settings: settings,
         );
 
-      case verification:
+      case AppRouteNames.verification:
         return MaterialPageRoute(
           builder: (_) {
             final email = settings.arguments as String? ?? '';
@@ -191,129 +209,43 @@ class AppRoutes {
           settings: settings,
         );
 
-      case forgetPassword:
+      case AppRouteNames.forgetPassword:
         return MaterialPageRoute(
           builder: (_) => const ForgetPasswordPage(),
           settings: settings,
         );
 
-      case roleSelection:
+      case AppRouteNames.roleSelection:
         return MaterialPageRoute(
           builder: (_) => const RoleSelectionPage(),
           settings: settings,
         );
 
-      // ── Routes Client (rôle: client) ─────────────────────
-      case clientHome:
-      case '/client':
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.client,
-          builder: () => const ClientHomePage(),
-        );
-
-      case clientMissions:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.client,
-          builder: () => const ClientMissionsPage(),
-        );
-
-      case clientProfile:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.client,
-          builder: () => const ClientProfilePage(),
-        );
-
-      case dashboard:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.client,
-          builder: () {
-            final auth =
-                settings.arguments as AuthController? ?? AuthController();
-            return ClientHomeView(authController: auth);
-          },
-        );
-
-      case createMission:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.client,
-          builder: () {
-            final auth =
-                settings.arguments as AuthController? ?? AuthController();
-            return CreateMissionView(authController: auth);
-          },
-        );
-
-      case missionDetail:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.client,
-          builder: () {
-            final taskId = settings.arguments as int? ?? 0;
-            return MissionDetailView(taskId: taskId);
-          },
-        );
-
-      // ── Routes Freelance (rôle: freelancer) ──────────────
-      case freelanceHome:
-      case '/freelance':
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.freelancer,
-          builder: () => const FreelanceHomePage(),
-        );
-
-      case freelanceApplications:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.freelancer,
-          builder: () => const FreelanceApplicationsPage(),
-        );
-
-      case freelanceProfile:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.freelancer,
-          builder: () => const FreelanceProfilePage(),
-        );
-
-      case freelanceDashboard:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.freelancer,
-          builder: () {
-            final auth =
-                settings.arguments as AuthController? ?? AuthController();
-            return DashboardView(authController: auth);
-          },
-        );
-
-      // Page détail mission freelance — reçoit les données via arguments
-      case freelanceJobDetailPage:
-        return _guard(
-          settings: settings,
-          requiredRole: UserRole.freelancer,
-          builder: () => const FreelanceJobDetailPage(),
-        );
-
-      // ── Routes Notifications (toutes les rôles) ───────────────
-      case notifications:
+      case AppRouteNames.notifications:
         return MaterialPageRoute(
           builder: (_) => const ListeNotificationView(),
           settings: settings,
         );
 
-      case notificationDetail:
+      case AppRouteNames.notificationDetail:
         return MaterialPageRoute(
           builder: (_) => const DetailleNotificationView(),
           settings: settings,
         );
+    }
 
-      // ── Fallbacks ─────────────────────────────────────────
+    // ── 2. Délégation aux sous-routeurs par rôle ─────────────────────────────
+    final freelanceRoute = FreelanceRoutes.generate(settings);
+    if (freelanceRoute != null) return freelanceRoute;
+
+    final clientRoute = ClientRoutes.generate(settings);
+    if (clientRoute != null) return clientRoute;
+
+    final adminRoute = AdminRoutes.generate(settings);
+    if (adminRoute != null) return adminRoute;
+
+    // ── 3. Fallback : aliases legacy & routes en développement ───────────────
+    switch (settings.name) {
       case '/tasks':
         return MaterialPageRoute(
           builder: (_) => Scaffold(
@@ -336,11 +268,36 @@ class AppRoutes {
           settings: settings,
         );
 
+      // ── 4. Erreur 404 ───────────────────────────────────────────────────────
       default:
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
+          builder: (ctx) => Scaffold(
             body: Center(
-              child: Text('Aucune route définie pour ${settings.name}'),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.map_outlined, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Page introuvable',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Aucune route définie pour "${settings.name}"',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                      ctx,
+                      AppRouteNames.landing,
+                      (r) => false,
+                    ),
+                    child: const Text('Retour à l\'accueil'),
+                  ),
+                ],
+              ),
             ),
           ),
           settings: settings,

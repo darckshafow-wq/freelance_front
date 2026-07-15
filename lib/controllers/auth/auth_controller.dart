@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/user_model.dart';
-import '../services/api/api_core.dart';
-import '../services/api/api_endpoints.dart';
+import '../../models/auth/user_model.dart';
+import '../../services/api/api_core.dart';
+import '../../services/api/api_endpoints.dart';
 
 class AuthController extends ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
@@ -32,10 +32,7 @@ class AuthController extends ChangeNotifier {
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.login,
-      body: {
-        'username': email,
-        'password': password,
-      },
+      body: {'username': email, 'password': password},
       parser: (json) => json as Map<String, dynamic>,
       requiresAuth: false,
       isFormUrlEncoded: true, // FastAPI OAuth2 standard uses formUrlEncoded
@@ -43,20 +40,42 @@ class AuthController extends ChangeNotifier {
 
     if (response.isSuccess && response.data != null) {
       final token = response.data!['access_token'] as String;
-      final userId = response.data!['user_id'] as int?;
       ApiClient.setToken(token);
-      
-      if (userId == null) {
-        _setError('ID utilisateur introuvable');
-        _setLoading(false);
-        return false;
+
+      // Standard OAuth2 ne retourne pas user_id — on récupère le profil via /users/me
+      final userId = response.data!['user_id'] as int?;
+
+      if (userId != null && userId > 0) {
+        return await fetchCurrentUserProfile(userId);
+      } else {
+        // Fallback : GET /users/me avec le token fraîchement obtenu
+        return await fetchCurrentUserViaMe();
       }
-      
-      // Fetch user details with the newly acquired token
-      return await fetchCurrentUserProfile(userId);
     } else {
       _setError(response.message ?? 'Connexion échouée');
       _setLoading(false);
+      return false;
+    }
+  }
+
+  // Récupère le profil via /users/me (quand user_id absent du token response)
+  Future<bool> fetchCurrentUserViaMe() async {
+    final response = await _apiClient.get<UserModel>(
+      endpoint: ApiEndpoints.me,
+      parser: (json) => UserModel.fromJson(json as Map<String, dynamic>),
+    );
+
+    _setLoading(false);
+
+    if (response.isSuccess && response.data != null) {
+      _currentUser = response.data;
+      notifyListeners();
+      return true;
+    } else {
+      _setError(
+        response.message ?? 'Impossible de récupérer le profil utilisateur',
+      );
+      logout();
       return false;
     }
   }
@@ -79,7 +98,7 @@ class AuthController extends ChangeNotifier {
       'is_client': role == UserRole.client,
       'is_freelancer': role == UserRole.freelancer,
       'is_admin': role == UserRole.admin,
-      if (phoneNumber != null) 'phone_number': phoneNumber,
+      'phone_number': phoneNumber,
     };
 
     final response = await _apiClient.post<UserModel>(
@@ -113,7 +132,9 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     } else {
-      _setError(response.message ?? 'Impossible de récupérer le profil utilisateur');
+      _setError(
+        response.message ?? 'Impossible de récupérer le profil utilisateur',
+      );
       logout();
       return false;
     }
@@ -122,16 +143,16 @@ class AuthController extends ChangeNotifier {
   Future<bool> sendOtp(String email) async {
     _setLoading(true);
     _setError(null);
-    
+
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.sendOtp,
       body: {'email': email},
       parser: (json) => json as Map<String, dynamic>,
       requiresAuth: false,
     );
-    
+
     _setLoading(false);
-    
+
     if (response.isSuccess) {
       return true;
     } else {
@@ -143,16 +164,16 @@ class AuthController extends ChangeNotifier {
   Future<bool> verifyOtp(String email, String code) async {
     _setLoading(true);
     _setError(null);
-    
+
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.verifyOtp,
       body: {'email': email, 'code': code},
       parser: (json) => json as Map<String, dynamic>,
       requiresAuth: false,
     );
-    
+
     _setLoading(false);
-    
+
     if (response.isSuccess) {
       if (_currentUser != null) {
         // Update local user model
