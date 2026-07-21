@@ -1,100 +1,468 @@
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
+import '../../../../../controllers/freelance/application_controller.dart';
+import '../../../../../models/freelance/application_model.dart';
+import '../../../../../routes/freelance_routes.dart'; // Added for navigation
 
-class FreelanceApplicationsPage extends StatelessWidget {
+class FreelanceApplicationsPage extends StatefulWidget {
   const FreelanceApplicationsPage({super.key});
+
+  @override
+  State<FreelanceApplicationsPage> createState() =>
+      _FreelanceApplicationsPageState();
+}
+
+class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
+  final ApplicationController _controller = ApplicationController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchApplications();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFFDFBF7),
       appBar: AppBar(
-        title: const Text('Mes candidatures'),
-        backgroundColor: Colors.white,
+        title: const Text(
+          'Mes demandes',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Colors.black87,
+          ),
+        ),
+
+        backgroundColor: const Color(0xFFFDFBF7),
         foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          _ApplicationCard(
-            title: 'Développement mobile',
-            status: 'En attente',
-            detail: 'Envoyée il y a 2h',
-          ),
-          _ApplicationCard(
-            title: 'Refonte UI',
-            status: 'Acceptée',
-            detail: 'Réponse reçue aujourd’hui',
-          ),
-          _ApplicationCard(
-            title: 'Rédaction technique',
-            status: 'En revue',
-            detail: 'En attente de validation',
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () => _controller.fetchApplications(),
+            icon: const Icon(Icons.refresh, size: 22, color: Colors.black),
           ),
         ],
+      ),
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) {
+          // 1. Chargement initial
+          if (_controller.isLoading && _controller.applications.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            );
+          }
+
+          // 2. Erreur
+          if (_controller.errorMessage != null &&
+              _controller.applications.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.error_outline_rounded,
+                        size: 40,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _controller.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => _controller.fetchApplications(),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Réessayer'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // 3. Aucun résultat
+          if (_controller.applications.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.assignment_turned_in_outlined,
+                        size: 64,
+                        color: AppColors.primary.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Aucune candidature',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Vos propositions de missions envoyées apparaîtront ici.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // 4. Affichage de la liste
+          return RefreshIndicator(
+            onRefresh: () => _controller.fetchApplications(),
+            color: AppColors.primary,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: _controller.applications.length,
+              itemBuilder: (context, index) {
+                final application = _controller.applications[index];
+                return _ApplicationCard(application: application);
+              },
+            ),
+          );
+        },
       ),
     );
   }
 }
 
 class _ApplicationCard extends StatelessWidget {
-  const _ApplicationCard({
-    required this.title,
-    required this.status,
-    required this.detail,
-  });
+  const _ApplicationCard({required this.application});
 
-  final String title;
-  final String status;
-  final String detail;
+  final ApplicationModel application;
+
+  String _getStatusLabel(ApplicationStatus status) {
+    switch (status) {
+      case ApplicationStatus.accepted:
+        return 'Acceptée';
+      case ApplicationStatus.rejected:
+        return 'Refusée';
+      case ApplicationStatus.pending:
+      default:
+        return 'En attente';
+    }
+  }
+
+  Color _getStatusColor(ApplicationStatus status) {
+    switch (status) {
+      case ApplicationStatus.accepted:
+        return const Color(0xFF10B981); // Vert moderne
+      case ApplicationStatus.rejected:
+        return const Color(0xFFEF4444); // Rouge moderne
+      case ApplicationStatus.pending:
+      default:
+        return const Color(0xFFF59E0B); // Orange moderne
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final String title = application.taskTitle ?? 'Mission sans titre';
+    final double budgetValue = application.proposedBudget;
+
+    final String statusLabel = _getStatusLabel(application.status);
+    final Color statusColor = _getStatusColor(application.status);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFDFBF7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.lightBorder),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+        ), // Bordure très douce
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          Expanded(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              FreelanceRouteNames.applicationDetail,
+              arguments: application,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                // 1. En-tête : Badge Statut & Date
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Badge de statut stylisé
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Icône d'informations supplémentaires
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  detail,
-                  style: TextStyle(color: AppColors.lightTextSecondary),
+                const SizedBox(height: 14),
+
+                // 2. Section principale (Icône + Titre & Info)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Petite icône d'illustration de dossier pour le design
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.work_outline_rounded,
+                        color: AppColors.lightTextPrimary.withValues(
+                          alpha: 0.7,
+                        ),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Titre et ID
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(
+                                0xFF0F172A,
+                              ), // Couleur Slate sombre très qualitative
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Candidature #${application.id}',
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 3. Lettre de motivation (Affiche un extrait si dispo)
+                if (application.coverLetter.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      application.coverLetter,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 12),
+
+                // 4. Section basse : Prix proposé & Icônes d'actions (Messagerie et Détails)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Budget proposé :',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${budgetValue.toStringAsFixed(0)} F CFA',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        // Bouton d'action pour la messagerie (couleur conditionnelle)
+                        IconButton(
+                          onPressed: () {
+                            if (application.clientId != null && application.clientId! > 0) {
+                              Navigator.pushNamed(
+                                context,
+                                '/freelance/chat', // ou la constante appropriée, e.g. FreelanceRouteNames.chat
+                                arguments: {
+                                  'otherUserId': application.clientId,
+                                  'otherUserName': 'Client de ${application.taskTitle}',
+                                  'applicationId': application.id,
+                                },
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Impossible de contacter le client pour cette mission.'),
+                                  backgroundColor: AppColors.error,
+                                )
+                              );
+                            }
+                          },
+                          icon: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            color:
+                                statusColor, // Applique directement la couleur du statut
+                            size: 20,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: statusColor.withValues(alpha: 0.1),
+                            padding: const EdgeInsets.all(10),
+                            minimumSize: const Size(40, 40),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Bouton d'action pour voir les détails de la mission
+                        IconButton(
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              FreelanceRouteNames.applicationDetail,
+                              arguments: application,
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.article_outlined,
+                            color: Color(0xFF64748B),
+                            size: 20,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            padding: const EdgeInsets.all(10),
+                            minimumSize: const Size(40, 40),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              status,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

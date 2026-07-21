@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
 import 'forget_password_page.dart';
@@ -166,9 +168,15 @@ class _LoginPageState extends State<LoginPage> {
                                 // Import the AuthController & UserModel if not imported at top
                                 // We'll add imports at the top
                                 final authController = AuthController();
+                                dev.log(
+                                  '[LoginPage] login() start email=${_emailController.text}',
+                                );
                                 final success = await authController.login(
                                   _emailController.text,
                                   _passwordController.text,
+                                );
+                                dev.log(
+                                  '[LoginPage] login() result success=$success error=${authController.errorMessage}',
                                 );
 
                                 if (!context.mounted) return;
@@ -187,15 +195,24 @@ class _LoginPageState extends State<LoginPage> {
                                   print("=====================");
 
                                   if (user != null && !user.isVerified) {
+                                    dev.log(
+                                      '[LoginPage] User requires OTP verification role=${user.role} email=${user.email}',
+                                    );
                                     // Demande de l'OTP
-                                    await authController.sendOtp(user.email);
+                                    final otpSent = await authController
+                                        .sendOtp(user.email);
+                                    dev.log(
+                                      '[LoginPage] sendOtp() result otpSent=$otpSent error=${authController.errorMessage}',
+                                    );
                                     if (!context.mounted) return;
 
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) =>
-                                            VerificationPage(email: user.email),
+                                        builder: (_) => VerificationPage(
+                                          email: user.email,
+                                          authController: authController,
+                                        ),
                                       ),
                                     );
                                     return;

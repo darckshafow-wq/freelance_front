@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import '../../models/auth/user_model.dart';
 import '../../services/api/api_core.dart';
@@ -29,6 +31,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _setError(null);
+    dev.log('[AuthController] login() start email=$email');
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.login,
@@ -41,9 +44,11 @@ class AuthController extends ChangeNotifier {
     if (response.isSuccess && response.data != null) {
       final token = response.data!['access_token'] as String;
       ApiClient.setToken(token);
+      dev.log('[AuthController] login() success token=${token.isNotEmpty}');
 
       // Standard OAuth2 ne retourne pas user_id — on récupère le profil via /users/me
       final userId = response.data!['user_id'] as int?;
+      dev.log('[AuthController] login() response userId=$userId');
 
       if (userId != null && userId > 0) {
         return await fetchCurrentUserProfile(userId);
@@ -52,6 +57,7 @@ class AuthController extends ChangeNotifier {
         return await fetchCurrentUserViaMe();
       }
     } else {
+      dev.log('[AuthController] login() failed message=${response.message}');
       _setError(response.message ?? 'Connexion échouée');
       _setLoading(false);
       return false;
@@ -143,6 +149,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> sendOtp(String email) async {
     _setLoading(true);
     _setError(null);
+    dev.log('[AuthController] sendOtp() start email=$email');
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.sendOtp,
@@ -152,6 +159,9 @@ class AuthController extends ChangeNotifier {
     );
 
     _setLoading(false);
+    dev.log(
+      '[AuthController] sendOtp() result success=${response.isSuccess} message=${response.message}',
+    );
 
     if (response.isSuccess) {
       return true;
@@ -164,6 +174,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> verifyOtp(String email, String code) async {
     _setLoading(true);
     _setError(null);
+    dev.log('[AuthController] verifyOtp() start email=$email code=$code');
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.verifyOtp,
@@ -173,10 +184,15 @@ class AuthController extends ChangeNotifier {
     );
 
     _setLoading(false);
+    dev.log(
+      '[AuthController] verifyOtp() result success=${response.isSuccess} message=${response.message}',
+    );
 
     if (response.isSuccess) {
       if (_currentUser != null) {
-        // Update local user model
+        dev.log(
+          '[AuthController] verifyOtp() marking current user verified id=${_currentUser!.id}',
+        );
         _currentUser = UserModel(
           id: _currentUser!.id,
           email: _currentUser!.email,
@@ -191,6 +207,18 @@ class AuthController extends ChangeNotifier {
           isVerified: true,
         );
         notifyListeners();
+        return true;
+      }
+
+      dev.log(
+        '[AuthController] verifyOtp() currentUser is null after successful OTP, fetching profile via /users/me',
+      );
+      final recovered = await fetchCurrentUserViaMe();
+      if (!recovered) {
+        _setError(
+          'Impossible de récupérer le profil utilisateur après vérification',
+        );
+        return false;
       }
       return true;
     } else {

@@ -10,12 +10,14 @@ import '../models/auth/user_model.dart';
 import '../controllers/auth/auth_controller.dart';
 
 // Vues Client
-import '../views/smartphone/client/home/client_home_page.dart';
 import '../views/smartphone/client/home/client_home_view.dart';
 import '../views/smartphone/client/missions/client_missions_page.dart';
 import '../views/smartphone/client/missions/create_mission_view.dart';
 import '../views/smartphone/client/missions/mission_detail_view.dart';
 import '../views/smartphone/client/profile/client_profile_page.dart';
+import '../views/smartphone/client/applications/client_applications_view.dart';
+import '../views/smartphone/client/chat/client_chat_list_page.dart';
+import '../views/smartphone/client/chat/client_chat_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes des noms de routes Client
@@ -34,6 +36,15 @@ class ClientRouteNames {
 
   /// Liste des missions créées par le client
   static const String missions = '/client/missions';
+
+  /// Liste des conversations du client
+  static const String chat = '/client/chat-list';
+
+  /// Conversation active du client
+  static const String chatDetail = '/client/chat';
+
+  /// Liste des candidatures reçues sur les missions du client
+  static const String applications = '/client/applications';
 
   /// Page de profil du client
   static const String profile = '/client/profile';
@@ -65,10 +76,14 @@ class ClientRoutes {
         return _guardRoute(
           settings: settings,
           requiredRole: UserRole.client,
-          builder: () => const ClientHomePage(),
+          builder: () {
+            final auth =
+                settings.arguments as AuthController? ?? AuthController();
+            return ClientHomeView(authController: auth);
+          },
         );
 
-      // ── Dashboard Client (legacy ClientHomeView) ──────────────────────────
+      // ── Dashboard Client (legacy ClientHomePage) ──────────────────────────
       case ClientRouteNames.dashboard:
         return _guardRoute(
           settings: settings,
@@ -85,7 +100,52 @@ class ClientRoutes {
         return _guardRoute(
           settings: settings,
           requiredRole: UserRole.client,
-          builder: () => const ClientMissionsPage(),
+          builder: () {
+            return const ClientMissionsPage();
+          },
+        );
+
+      case ClientRouteNames.applications:
+        return _guardRoute(
+          settings: settings,
+          requiredRole: UserRole.client,
+          builder: () => const ClientApplicationsView(),
+        );
+
+      // ── Conversations / Chat Client ─────────────────────────────────────────
+      case ClientRouteNames.chat:
+        return _guardRoute(
+          settings: settings,
+          requiredRole: UserRole.client,
+          builder: () {
+            final auth = settings.arguments as AuthController?;
+            final currentUserId = auth?.currentUser?.id ?? 0;
+            return ClientChatListPage(currentUserId: currentUserId);
+          },
+        );
+
+      case ClientRouteNames.chatDetail:
+        return _guardRoute(
+          settings: settings,
+          requiredRole: UserRole.client,
+          builder: () {
+            final args = settings.arguments;
+            int otherUserId = 0;
+            String? otherUserName;
+            int? taskId;
+
+            if (args is Map<String, dynamic>) {
+              otherUserId = args['otherUserId'] as int? ?? 0;
+              otherUserName = args['otherUserName'] as String?;
+              taskId = args['taskId'] as int?;
+            }
+
+            return ClientChatPage(
+              otherUserId: otherUserId,
+              otherUserName: otherUserName,
+              taskId: taskId,
+            );
+          },
         );
 
       // ── Profil Client ─────────────────────────────────────────────────────

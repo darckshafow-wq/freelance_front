@@ -15,7 +15,11 @@
 //   Navigator.pushNamed(context, ClientRouteNames.createMission, arguments: authController);
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
+
+import '../controllers/auth/auth_controller.dart';
 
 // Sous-routeurs par rôle
 import 'freelance_routes.dart';
@@ -176,6 +180,9 @@ class AppRoutes {
   //   5. Fallback 404
   // ────────────────────────────────────────────────────────────────────────────
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    dev.log(
+      '[AppRoutes] generateRoute() name=${settings.name} arguments=${settings.arguments}',
+    );
     // ── 1. Routes Publiques ──────────────────────────────────────────────────
     switch (settings.name) {
       case AppRouteNames.landing:
@@ -203,6 +210,16 @@ class AppRoutes {
       case AppRouteNames.verification:
         return MaterialPageRoute(
           builder: (_) {
+            final args = settings.arguments;
+            dev.log('[AppRoutes] verification route args=${args.runtimeType}');
+            if (args is Map<String, dynamic>) {
+              final email = args['email'] as String? ?? '';
+              final authController = args['authController'] as AuthController?;
+              return VerificationPage(
+                email: email,
+                authController: authController,
+              );
+            }
             final email = settings.arguments as String? ?? '';
             return VerificationPage(email: email);
           },
@@ -223,7 +240,16 @@ class AppRoutes {
 
       case AppRouteNames.notifications:
         return MaterialPageRoute(
-          builder: (_) => const ListeNotificationView(),
+          builder: (_) {
+            final args = settings.arguments;
+            AuthController? authController;
+            if (args is AuthController) {
+              authController = args;
+            } else if (args is Map<String, dynamic>) {
+              authController = args['authController'] as AuthController?;
+            }
+            return ListeNotificationView(authController: authController);
+          },
           settings: settings,
         );
 

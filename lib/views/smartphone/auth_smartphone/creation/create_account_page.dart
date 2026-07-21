@@ -208,6 +208,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                       MaterialPageRoute(
                                         builder: (_) => VerificationPage(
                                           email: _emailController.text.trim(),
+                                          authController: authController,
                                         ),
                                       ),
                                     );

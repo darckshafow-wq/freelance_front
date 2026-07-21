@@ -1,10 +1,14 @@
 import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
+import '../../models/auth/user_model.dart';
 import '../../services/api/api_core.dart';
 import '../../services/api/api_endpoints.dart';
 import '../../models/shared/notification_model.dart';
 
 class NotificationController extends ChangeNotifier {
+  final UserRole? role;
+  NotificationController({this.role});
+
   final ApiClient _apiClient = ApiClient();
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
@@ -34,29 +38,74 @@ class NotificationController extends ChangeNotifier {
 
   /// Récupère les notifications depuis le backend si l’endpoint existe.
   /// Le backend actuel n’expose pas cette ressource ; on garde un état vide proprement.
+  String get _notificationsEndpoint {
+    switch (role) {
+      case UserRole.client:
+        return ApiEndpoints.clientNotifications;
+      case UserRole.admin:
+        return ApiEndpoints.adminNotifications;
+      case UserRole.freelancer:
+        return ApiEndpoints.freelanceNotifications;
+      default:
+        return ApiEndpoints.notifications;
+    }
+  }
+
+  String _notificationRead(int id) {
+    switch (role) {
+      case UserRole.client:
+        return ApiEndpoints.clientNotificationRead(id);
+      case UserRole.admin:
+        return ApiEndpoints.adminNotificationRead(id);
+      case UserRole.freelancer:
+        return ApiEndpoints.freelanceNotificationRead(id);
+      default:
+        return ApiEndpoints.notificationRead(id);
+    }
+  }
+
+  String _notificationDelete(int id) {
+    switch (role) {
+      case UserRole.client:
+        return ApiEndpoints.clientNotificationDelete(id);
+      case UserRole.admin:
+        return ApiEndpoints.adminNotificationDelete(id);
+      case UserRole.freelancer:
+        return ApiEndpoints.freelanceNotificationDelete(id);
+      default:
+        return ApiEndpoints.notificationDelete(id);
+    }
+  }
+
   Future<void> fetchNotifications() async {
     dev.log('[NotificationController] fetchNotifications() started');
     _setLoading(true);
     _setError(null);
 
     final response = await _apiClient.get<List<NotificationModel>>(
-      endpoint: ApiEndpoints.notifications,
+      endpoint: _notificationsEndpoint,
       parser: (json) {
-        dev.log('[NotificationController] fetchNotifications - Raw JSON Response: $json');
+        dev.log(
+          '[NotificationController] fetchNotifications - Raw JSON Response: $json',
+        );
         if (json is List) {
-          final list = json
-              .map(
-                (item) {
-                  dev.log('[NotificationController] fetchNotifications - Processing Item: $item');
-                  final model = NotificationModel.fromJson(item as Map<String, dynamic>);
-                  dev.log('[NotificationController] fetchNotifications - Parsed NotificationModel: ID=${model.id}, Title="${model.title}", Type=${model.type}, Read=${model.isRead}');
-                  return model;
-                },
-              )
-              .toList();
+          final list = json.map((item) {
+            dev.log(
+              '[NotificationController] fetchNotifications - Processing Item: $item',
+            );
+            final model = NotificationModel.fromJson(
+              item as Map<String, dynamic>,
+            );
+            dev.log(
+              '[NotificationController] fetchNotifications - Parsed NotificationModel: ID=${model.id}, Title="${model.title}", Type=${model.type}, Read=${model.isRead}',
+            );
+            return model;
+          }).toList();
           return list;
         }
-        dev.log('[NotificationController] fetchNotifications - Warning: JSON is not a List!');
+        dev.log(
+          '[NotificationController] fetchNotifications - Warning: JSON is not a List!',
+        );
         return [];
       },
     );
@@ -69,9 +118,13 @@ class NotificationController extends ChangeNotifier {
 
     if (response.isSuccess && response.data != null) {
       _notifications = response.data!;
-      dev.log('[NotificationController] fetchNotifications SUCCESS - Injected ${_notifications.length} notifications.');
+      dev.log(
+        '[NotificationController] fetchNotifications SUCCESS - Injected ${_notifications.length} notifications.',
+      );
     } else {
-      dev.log('[NotificationController] fetchNotifications FAILED: ${response.message}');
+      dev.log(
+        '[NotificationController] fetchNotifications FAILED: ${response.message}',
+      );
       _notifications = [];
     }
 
@@ -85,19 +138,25 @@ class NotificationController extends ChangeNotifier {
     if (idx != -1 && !_notifications[idx].isRead) {
       // Mise à jour optimiste
       _notifications[idx] = _notifications[idx].copyWith(isRead: true);
-      dev.log('[NotificationController] markAsRead - Optimistically marked notification $notifId as read.');
+      dev.log(
+        '[NotificationController] markAsRead - Optimistically marked notification $notifId as read.',
+      );
       notifyListeners();
 
       // Persistance backend
       final response = await _apiClient.post(
         body: {},
-        endpoint: ApiEndpoints.notificationRead(notifId),
+        endpoint: _notificationRead(notifId),
         parser: (json) {
-          dev.log('[NotificationController] markAsRead API - Raw JSON Response: $json');
+          dev.log(
+            '[NotificationController] markAsRead API - Raw JSON Response: $json',
+          );
           return json;
         },
       );
-      dev.log('[NotificationController] markAsRead API response: success=${response.isSuccess}');
+      dev.log(
+        '[NotificationController] markAsRead API response: success=${response.isSuccess}',
+      );
     }
   }
 
@@ -112,25 +171,34 @@ class NotificationController extends ChangeNotifier {
       }
     }
     if (changed) {
-      dev.log('[NotificationController] markAllAsRead - Marked all as read local.');
+      dev.log(
+        '[NotificationController] markAllAsRead - Marked all as read local.',
+      );
       notifyListeners();
-      // TODO: Replace with actual backend call if applicable
     }
   }
 
   /// Supprime une notification avec dismiss optimiste
   Future<void> deleteNotification(int notifId) async {
-    dev.log('[NotificationController] deleteNotification(notifId: $notifId) started');
+    dev.log(
+      '[NotificationController] deleteNotification(notifId: $notifId) started',
+    );
     _notifications.removeWhere((n) => n.id == notifId);
-    dev.log('[NotificationController] deleteNotification - Optimistically removed notification $notifId.');
+    dev.log(
+      '[NotificationController] deleteNotification - Optimistically removed notification $notifId.',
+    );
     notifyListeners();
     final response = await _apiClient.delete(
-      endpoint: ApiEndpoints.notifications + notifId.toString(),
+      endpoint: _notificationDelete(notifId),
       parser: (json) {
-        dev.log('[NotificationController] deleteNotification API - Raw JSON Response: $json');
+        dev.log(
+          '[NotificationController] deleteNotification API - Raw JSON Response: $json',
+        );
         return json;
       },
     );
-    dev.log('[NotificationController] deleteNotification API response: success=${response.isSuccess}');
+    dev.log(
+      '[NotificationController] deleteNotification API response: success=${response.isSuccess}',
+    );
   }
 }

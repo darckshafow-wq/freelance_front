@@ -66,6 +66,10 @@ class UserModel {
         ? Map<String, dynamic>.from(json['roles'] as Map)
         : null;
 
+    final bool topLevelIsAdmin = json['is_admin'] as bool? ?? false;
+    final bool topLevelIsClient = json['is_client'] as bool? ?? false;
+    final bool topLevelIsFreelancer = json['is_freelancer'] as bool? ?? false;
+
     if (json['role'] != null) {
       role = UserRole.fromString(json['role'].toString());
     } else if (rolesJson != null) {
@@ -73,6 +77,12 @@ class UserModel {
         isAdmin: rolesJson['is_admin'] as bool? ?? false,
         isClient: rolesJson['is_client'] as bool? ?? false,
         isFreelancer: rolesJson['is_freelancer'] as bool? ?? false,
+      );
+    } else if (topLevelIsAdmin || topLevelIsClient || topLevelIsFreelancer) {
+      role = UserRole.fromBooleans(
+        isAdmin: topLevelIsAdmin,
+        isClient: topLevelIsClient,
+        isFreelancer: topLevelIsFreelancer,
       );
     } else {
       role = UserRole.freelancer;

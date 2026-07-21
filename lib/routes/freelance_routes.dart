@@ -8,14 +8,17 @@
 import 'package:flutter/material.dart';
 import '../models/auth/user_model.dart';
 import '../controllers/auth/auth_controller.dart';
+import '../models/freelance/application_model.dart';
 
 // Vues Freelance
 import '../views/smartphone/freelance/home/freelance_home_page.dart';
 import '../views/smartphone/freelance/applications/freelance_applications_page.dart';
+import '../views/smartphone/freelance/applications/application_detail_page.dart';
 import '../views/smartphone/freelance/profile/freelance_profile_page.dart';
 import '../views/smartphone/freelance/dashboard/dashboard_view.dart';
 import '../views/smartphone/freelance/tasks/detaille_task.dart';
 import '../views/smartphone/freelance/chat/freelance_chat_page.dart';
+import '../views/smartphone/freelance/chat/chat_list_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes des noms de routes Freelance
@@ -38,8 +41,14 @@ class FreelanceRouteNames {
   /// Page de profil du freelance — attend `Map<String, dynamic>` avec `userId`
   static const String profile = '/freelance/profile';
 
+  /// Détail d'une candidature
+  static const String applicationDetail = '/freelance/application-detail';
+
   /// Détail d'une offre / mission — attend les données via arguments
   static const String jobDetail = '/freelance/job-detail';
+
+  /// Liste des conversations
+  static const String chatList = '/freelance/chat-list';
 
   /// Conversation chat entre freelance et client
   static const String chat = '/freelance/chat';
@@ -64,13 +73,30 @@ class FreelanceRoutes {
           settings: settings,
           requiredRole: UserRole.freelancer,
           builder: () {
-            final auth = settings.arguments is AuthController
-                ? settings.arguments as AuthController
-                : null;
-            return FreelanceHomePage(authController: auth);
+            // 1. Initialisation des variables par défaut
+            AuthController? authController;
+            String userId = 'me'; // Valeur de repli sécurisée
+
+            // 2. Extraction intelligente des arguments passés lors de la navigation
+            if (settings.arguments is AuthController) {
+              authController = settings.arguments as AuthController;
+              userId = authController.currentUser?.id.toString() ?? 'me';
+            } else if (settings.arguments is Map<String, dynamic>) {
+              final args = settings.arguments as Map<String, dynamic>;
+              authController = args['authController'] as AuthController?;
+              userId =
+                  args['userId']?.toString() ??
+                  authController?.currentUser?.id.toString() ??
+                  'me';
+            }
+
+            // 3. Retour de la page avec tous ses paramètres obligatoires
+            return FreelanceHomePage(
+              userId: userId,
+              authController: authController,
+            );
           },
         );
-
       // ── Tableau de bord (legacy DashboardView) ───────────────────────────
       case FreelanceRouteNames.dashboard:
         return _guardRoute(
@@ -89,6 +115,16 @@ class FreelanceRoutes {
           settings: settings,
           requiredRole: UserRole.freelancer,
           builder: () => const FreelanceApplicationsPage(),
+        );
+
+      case FreelanceRouteNames.applicationDetail:
+        return _guardRoute(
+          settings: settings,
+          requiredRole: UserRole.freelancer,
+          builder: () {
+            final appModel = settings.arguments as ApplicationModel;
+            return ApplicationDetailPage(application: appModel);
+          },
         );
 
       // ── Profil Freelance ─────────────────────────────────────────────────
@@ -126,6 +162,29 @@ class FreelanceRoutes {
           settings: settings,
           requiredRole: UserRole.freelancer,
           builder: () => const FreelanceJobDetailPage(),
+        );
+
+      case FreelanceRouteNames.chatList:
+        return _guardRoute(
+          settings: settings,
+          requiredRole: UserRole.freelancer,
+          builder: () {
+            int currentUserId = 0;
+
+            // Extraction de l'ID depuis l'AuthController ou la Map passée en arguments
+            if (settings.arguments is AuthController) {
+              final auth = settings.arguments as AuthController;
+              currentUserId = auth.currentUser?.id ?? 0;
+            } else if (settings.arguments is Map<String, dynamic>) {
+              final args = settings.arguments as Map<String, dynamic>;
+              final auth = args['authController'] as AuthController?;
+              currentUserId =
+                  args['currentUserId'] as int? ?? auth?.currentUser?.id ?? 0;
+            }
+
+            // On passe enfin le paramètre requis au constructeur
+            return ChatListPage(currentUserId: currentUserId);
+          },
         );
 
       case FreelanceRouteNames.chat:

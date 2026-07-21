@@ -4,32 +4,91 @@ import '../../../../routes/app_router.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/shared/notification_controller.dart';
 import '../../../../controllers/freelance/task_controller.dart';
-// Importations de tes vrais fichiers
 import '../../../../models/client/task_model.dart';
+import '../../../../controllers/freelance/profil_controller.dart';
+import '../../../../models/auth/user_model.dart';
 
 class FreelanceHomePage extends StatefulWidget {
+  final String userId;
   final AuthController? authController;
 
-  const FreelanceHomePage({super.key, this.authController});
+  const FreelanceHomePage({
+    super.key,
+    required this.userId,
+    this.authController,
+  });
 
   @override
   State<FreelanceHomePage> createState() => _FreelanceHomePageState();
 }
 
 class _FreelanceHomePageState extends State<FreelanceHomePage> {
-  // Instance unique du contrôleur pour cette vue
   final FreelanceTaskController _taskController = FreelanceTaskController();
-  final NotificationController _notificationController =
-      NotificationController();
+  late final NotificationController _notificationController;
+
+  // Instance du contrôleur de profil
+  final ProfilController _profilController = ProfilController();
+
+  // État local pour stocker les informations de l'utilisateur connecté
+  UserModel? _currentUser;
+  bool _isProfileLoading = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _notificationController = NotificationController(
+      role: widget.authController?.currentUser?.role,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+
+      // 1. Chargement initial des tâches et notifications
       _taskController.fetchHomeTasks();
       _notificationController.fetchNotifications();
+
+      // 2. Résolution de l'ID utilisateur
+      final currentUserId = ProfilController.resolveUserId(
+        widget.userId,
+        currentUserId: widget.authController?.currentUser?.id,
+      );
+
+      final resolvedUserId =
+          currentUserId ?? widget.authController?.currentUser?.id ?? 0;
+
+      // 3. Récupération conforme du profil via le ProfilController
+      try {
+        setState(() => _isProfileLoading = true);
+
+        // Récupération de l'utilisateur (getUserInfo gère le fallback si resolvedUserId <= 0)
+        final user = await _profilController.getUserInfo(resolvedUserId);
+
+        if (mounted) {
+          setState(() {
+            _currentUser = user;
+            _isProfileLoading = false;
+          });
+        }
+
+        // Chargement parallèle optionnel des stats du freelance en tâche de fond si nécessaire
+        if (resolvedUserId > 0) {
+          await _profilController.loadFullProfile(userId: resolvedUserId);
+        }
+      } catch (e) {
+        debugPrint("[Home] Erreur de récupération du profil : $e");
+        if (mounted) {
+          setState(() => _isProfileLoading = false);
+        }
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    // Note : Le ProfilController n'a pas de méthode dispose() définie,
+    // on ne libère donc que les contrôleurs qui en ont besoin.
+    _taskController.dispose();
+    _notificationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -51,7 +110,11 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
         actions: [
           IconButton(
             onPressed: () async {
-              await Navigator.pushNamed(context, AppRoutes.notifications);
+              await Navigator.pushNamed(
+                context,
+                AppRoutes.notifications,
+                arguments: widget.authController,
+              );
             },
             icon: AnimatedBuilder(
               animation: _notificationController,
@@ -109,11 +172,9 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
               ),
               const SizedBox(height: 20),
 
-              // ÉCOUTE DU CONTRÔLEUR VIA LISTENABLEBUILDER
               ListenableBuilder(
                 listenable: _taskController,
                 builder: (context, child) {
-                  // Écran de chargement
                   if (_taskController.isLoading) {
                     return const Center(
                       child: Padding(
@@ -125,7 +186,6 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                     );
                   }
 
-                  // Gestion de l'erreur renvoyée par le serveur
                   if (_taskController.errorMessage != null) {
                     return Center(
                       child: Padding(
@@ -157,7 +217,6 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                     );
                   }
 
-                  // Liste vide
                   if (_taskController.homeTasks.isEmpty) {
                     return const Center(
                       child: Padding(
@@ -170,7 +229,6 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                     );
                   }
 
-                  // Affichage dynamique des données réelles de la DB
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -187,7 +245,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                             : 'Mission publiée sur la plateforme.',
                         budget: '${task.budget.toStringAsFixed(0)} F CFA',
                         clientName: task.clientId > 0
-                            ? 'Client #${task.clientId}'
+                            ? 'Client #'
                             : 'Client partenaire',
                         duration: task.deadline != null
                             ? '${task.deadline!.difference(DateTime.now()).inDays} jours restants'
@@ -211,6 +269,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                               'description': task.description,
                               'budget':
                                   '${task.budget.toStringAsFixed(0)} F CFA',
+                              'budgetValue': task.budget,
                               'deadline': task.deadline?.toIso8601String(),
                               'clientId': task.clientId,
                               'location': task.location,
@@ -229,8 +288,13 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
     );
   }
 
-  // --- TON DRAWER RESTE IDENTIQUE ---
   Drawer _buildDrawer(BuildContext context) {
+    // Utilisation de l'état local du profil mis à jour
+    final displayName = _currentUser?.fullName ?? 'Utilisateur';
+    final userRoleLabel = _currentUser?.role == UserRole.client
+        ? 'Client'
+        : 'Freelancer';
+
     return Drawer(
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -274,14 +338,24 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'John Doe',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2D2D2D),
+                      if (_isProfileLoading)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFFFB000),
+                          ),
+                        )
+                      else
+                        Text(
+                          displayName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2D2D2D),
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -294,9 +368,9 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                           ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          'Freelance Vérifié',
-                          style: TextStyle(
+                        child: Text(
+                          userRoleLabel,
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFFFFB000),
                             fontWeight: FontWeight.bold,
@@ -334,16 +408,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                   title: 'Messages',
                   onTap: () {
                     Navigator.pop(context);
-                    // Ouvre le chat vers un contact existant
-                    // Par défaut otherUserId=0 → affiche écran vide avec invite
-                    Navigator.pushNamed(
-                      context,
-                      '/freelance/chat',
-                      arguments: const {
-                        'otherUserId': 2,
-                        'otherUserName': 'Client',
-                      },
-                    );
+                    Navigator.pushNamed(context, '/freelance/chat-list');
                   },
                 ),
                 _buildDrawerItem(
@@ -472,7 +537,6 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
   }
 }
 
-// --- TON CARD COMPONENT ---
 class _MissionCard extends StatelessWidget {
   const _MissionCard({
     required this.title,

@@ -33,7 +33,9 @@ class TaskController extends ChangeNotifier {
       endpoint: ApiEndpoints.clientTasks,
       parser: (json) {
         if (json is List) {
-          return json.map((item) => TaskModel.fromJson(item as Map<String, dynamic>)).toList();
+          return json
+              .map((item) => TaskModel.fromJson(item as Map<String, dynamic>))
+              .toList();
         }
         return [];
       },
@@ -44,7 +46,9 @@ class TaskController extends ChangeNotifier {
     if (response.isSuccess && response.data != null) {
       _tasks = response.data!;
     } else {
-      _setError(response.message ?? 'Erreur lors de la récupération des tâches');
+      _setError(
+        response.message ?? 'Erreur lors de la récupération des tâches',
+      );
     }
   }
 
@@ -53,16 +57,20 @@ class TaskController extends ChangeNotifier {
     required String title,
     required String description,
     required double budget,
+    String? location,
     DateTime? deadline,
   }) async {
     _setLoading(true);
     _setError(null);
 
-    final body = {
+    final body = <String, dynamic>{
       'title': title,
-      'description': description,
-      'budget': budget,
-      if (deadline != null) 'deadline': deadline.toIso8601String(),
+      'price': budget,
+      if (description.isNotEmpty) 'description': description,
+      if (location != null && location.trim().isNotEmpty)
+        'location': location.trim(),
+      // Le schéma OpenAPI TaskCreate n'inclut pas de champ deadline.
+      // Ne pas envoyer deadline pour éviter les 422 liés à des champs inconnus.
     };
 
     final response = await _apiClient.post<TaskModel>(
