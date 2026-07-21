@@ -30,9 +30,11 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.16)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,7 +59,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                     Text(
                       'Sélectionnez le profil qui correspond à votre besoin.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -138,11 +140,13 @@ class _RoleCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.accent.withOpacity(0.22)
-              : Colors.white.withOpacity(0.1),
+              ? AppColors.accent.withValues(alpha: 0.22)
+              : Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? AppColors.accent : Colors.white.withOpacity(0.16),
+            color: selected
+                ? AppColors.accent
+                : Colors.white.withValues(alpha: 0.16),
           ),
         ),
         child: Row(
@@ -150,7 +154,7 @@ class _RoleCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.14),
+                color: Colors.white.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: Colors.white, size: 28),
@@ -172,7 +176,7 @@ class _RoleCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.78),
+                      color: Colors.white.withValues(alpha: 0.78),
                       fontSize: 13,
                       height: 1.4,
                     ),

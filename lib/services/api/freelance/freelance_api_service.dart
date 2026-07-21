@@ -25,7 +25,7 @@ class FreelanceApiService {
   ) async {
     dev.log('[FreelanceApiService] getFreelancerStats(userId: $userId)');
     return _client.get<Map<String, dynamic>>(
-      endpoint: ApiEndpoints.freelanceStats(userId),
+      endpoint: ApiEndpoints.freelanceStats,
       parser: (json) => json as Map<String, dynamic>,
     );
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as dev;
 import 'package:http/http.dart' as http;
 import 'api_response.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   static String? _authToken;
@@ -9,14 +10,38 @@ class ApiClient {
   // Getter public pour permettre au routeur de vérifier l'authentification
   static String? get currentToken => _authToken;
 
-  // Set the token globally after a successful login
-  static void setToken(String token) {
-    _authToken = token;
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _authToken = prefs.getString('token');
+      if (_authToken != null) {
+        //dev.log(
+        // '[ApiClient] token restaure au demarage : ${_authToken.substring(0, 10)}.....',
+        //);
+      }
+    } catch (e) {
+      dev.log('[ApiClient] imposible decharger le token stoker: $e');
+    }
   }
 
-  // Clear token on logout
-  static void clearToken() {
+  static Future<void> setToken(String token) async {
+    _authToken = token;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+    } catch (e) {
+      dev.log('errreur de sauvegarde du token dasn la memoire: $e');
+    }
+  }
+
+  static Future<void> clearToken() async {
     _authToken = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+    } catch (e) {
+      dev.log('errreur de supression du token dasn la memoire: $e');
+    }
   }
 
   Map<String, String> _getHeaders({bool requiresAuth = true}) {
@@ -73,7 +98,6 @@ class ApiClient {
     required T Function(dynamic json) parser,
     bool requiresAuth = true,
   }) async {
-
     try {
       dev.log('API GET Request to: $endpoint');
       final response = await http.get(
@@ -95,7 +119,6 @@ class ApiClient {
     bool isFormUrlEncoded =
         false, // FastAPI /token login requires formUrlEncoded
   }) async {
-
     try {
       dev.log('API POST Request to: $endpoint with body: $body');
 
@@ -127,7 +150,6 @@ class ApiClient {
     required T Function(dynamic json) parser,
     bool requiresAuth = true,
   }) async {
-
     try {
       dev.log('API PUT Request to: $endpoint with body: $body');
       final response = await http.put(
@@ -147,7 +169,6 @@ class ApiClient {
     required T Function(dynamic json) parser,
     bool requiresAuth = true,
   }) async {
-
     try {
       dev.log('API DELETE Request to: $endpoint');
       final response = await http.delete(

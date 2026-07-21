@@ -3,9 +3,7 @@
 // Toutes les routes réservées aux utilisateurs avec le rôle "Admin".
 //
 // Convention de nommage : toutes les constantes commencent par `/admin/`
-// Note : Les vues admin seront créées au fur et à mesure.
 // ─────────────────────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,6 +49,16 @@ class AdminRoutes {
         return _guardRoute(
           settings: settings,
           builder: () => const _AdminPlaceholder(title: 'Gestion Utilisateurs'),
+        );
+
+      // ── Détail Utilisateur ────────────────────────────────────────────────
+      case AdminRouteNames.userDetail:
+        final userId = settings.arguments as int?;
+        return _guardRoute(
+          settings: settings,
+          builder: () => _AdminPlaceholder(
+            title: 'Détail Utilisateur ${userId != null ? '(#$userId)' : ''}',
+          ),
         );
 
       // ── Gestion Missions ──────────────────────────────────────────────────
@@ -104,7 +112,11 @@ class _AdminDashboardPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.admin_panel_settings_outlined, size: 64, color: Color(0xFFFFB000)),
+            Icon(
+              Icons.admin_panel_settings_outlined,
+              size: 64,
+              color: Color(0xFFFFB000),
+            ),
             SizedBox(height: 16),
             Text(
               'Tableau de bord Admin',

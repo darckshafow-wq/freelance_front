@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
 
@@ -6,7 +8,9 @@ import '../../../../controllers/auth/auth_controller.dart';
 
 class VerificationPage extends StatefulWidget {
   final String email;
-  const VerificationPage({super.key, required this.email});
+  final AuthController? authController;
+
+  const VerificationPage({super.key, required this.email, this.authController});
 
   @override
   State<VerificationPage> createState() => _VerificationPageState();
@@ -132,16 +136,26 @@ class _VerificationPageState extends State<VerificationPage> {
                                   _errorMessage = null;
                                 });
 
-                                final authController = AuthController();
+                                final authController =
+                                    widget.authController ?? AuthController();
+                                dev.log(
+                                  '[VerificationPage] verifyOtp() start email=${widget.email} controllerPresent=${widget.authController != null}',
+                                );
                                 final success = await authController.verifyOtp(
                                   widget.email,
                                   _tokenController.text,
+                                );
+                                dev.log(
+                                  '[VerificationPage] verifyOtp() finished success=$success role=${authController.currentUser?.role}',
                                 );
 
                                 if (!context.mounted) return;
 
                                 if (success) {
                                   final role = authController.currentUser?.role;
+                                  dev.log(
+                                    '[VerificationPage] OTP verified, route selection role=$role',
+                                  );
                                   if (role == UserRole.client) {
                                     Navigator.pushNamedAndRemoveUntil(
                                       context,
@@ -149,13 +163,26 @@ class _VerificationPageState extends State<VerificationPage> {
                                       (route) => false,
                                       arguments: authController,
                                     );
-                                  } else {
+                                  } else if (role == UserRole.freelancer) {
                                     Navigator.pushNamedAndRemoveUntil(
                                       context,
                                       '/freelance/home',
                                       (route) => false,
                                       arguments: authController,
                                     );
+                                  } else if (role == UserRole.admin) {
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/admin/',
+                                      (route) => false,
+                                      arguments: authController,
+                                    );
+                                  } else {
+                                    setState(() {
+                                      _isLoading = false;
+                                      _errorMessage =
+                                          'Impossible de déterminer le rôle utilisateur.';
+                                    });
                                   }
                                 } else {
                                   setState(() {
@@ -192,7 +219,8 @@ class _VerificationPageState extends State<VerificationPage> {
                         onPressed: _isLoading
                             ? null
                             : () async {
-                                final authController = AuthController();
+                                final authController =
+                                    widget.authController ?? AuthController();
                                 await authController.sendOtp(widget.email);
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(

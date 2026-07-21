@@ -1,6 +1,7 @@
 import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import '../../models/client/task_model.dart';
+import '../../models/freelance/application_model.dart';
 import '../../services/api/api_core.dart';
 import '../../services/api/api_endpoints.dart';
 
@@ -83,7 +84,8 @@ class FreelanceTaskController extends ChangeNotifier {
           final tasks = json
               .map((item) {
                 dev.log('[FreelanceTaskController] fetchAppliedTasks - Processing Raw Item: $item');
-                final model = TaskModel.fromJson(item as Map<String, dynamic>);
+                final appModel = ApplicationModel.fromJson(item as Map<String, dynamic>);
+                final model = _mapApplicationToTask(appModel);
                 dev.log('[FreelanceTaskController] fetchAppliedTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}');
                 return model;
               })
@@ -117,14 +119,15 @@ class FreelanceTaskController extends ChangeNotifier {
     _setError(null);
 
     final response = await _apiClient.get<List<TaskModel>>(
-      endpoint: '${ApiEndpoints.freelanceTasks}completed',
+      endpoint: '${ApiEndpoints.freelanceApplications}?status=accepted',
       parser: (json) {
         dev.log('[FreelanceTaskController] fetchCompletedTasks - Parsing Raw JSON: $json');
         if (json is List) {
           final tasks = json
               .map((item) {
                 dev.log('[FreelanceTaskController] fetchCompletedTasks - Processing Raw Item: $item');
-                final model = TaskModel.fromJson(item as Map<String, dynamic>);
+                final appModel = ApplicationModel.fromJson(item as Map<String, dynamic>);
+                final model = _mapApplicationToTask(appModel);
                 dev.log('[FreelanceTaskController] fetchCompletedTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}');
                 return model;
               })
@@ -152,5 +155,19 @@ class FreelanceTaskController extends ChangeNotifier {
         response.message ?? 'Impossible de charger les missions terminées',
       );
     }
+  }
+
+  TaskModel _mapApplicationToTask(ApplicationModel app) {
+    return TaskModel(
+      id: app.taskId,
+      title: app.taskTitle ?? 'Mission #${app.taskId}',
+      description: app.taskDescription ?? app.coverLetter,
+      budget: app.proposedBudget,
+      status: app.status == ApplicationStatus.accepted
+          ? TaskStatus.executed
+          : TaskStatus.pending,
+      clientId: app.clientId ?? 0,
+      createdAt: app.createdAt,
+    );
   }
 }

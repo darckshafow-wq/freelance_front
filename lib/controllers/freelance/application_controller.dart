@@ -25,46 +25,71 @@ class ApplicationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Postuler à une mission
+  /// Postuler à une mission (Reste un POST sur /api/v1/applications/)
   Future<bool> applyToTask({
     required int taskId,
     required double budget,
     String coverLetter = '',
   }) async {
     dev.log(
-      '[ApplicationController] applyToTask(taskId: $taskId, budget: $budget, coverLetter: "$coverLetter") started',
+      '[ApplicationController] applyToTask(taskId: $taskId, budget: $budget) started',
     );
     _setLoading(true);
     _setError(null);
 
     final response = await _apiClient.post<ApplicationModel>(
-      endpoint: ApiEndpoints.freelanceApplications,
+      endpoint: ApiEndpoints.freelanceApply, // -> /freelance/apply
       body: {
         'task_id': taskId,
         'proposed_budget': budget,
         'cover_letter': coverLetter,
       },
       parser: (json) {
-        dev.log('[ApplicationController] applyToTask - Raw JSON Response: $json');
-        final model = ApplicationModel.fromJson(json as Map<String, dynamic>);
-        dev.log('[ApplicationController] applyToTask - Parsed ApplicationModel: ID=${model.id}, TaskID=${model.taskId}, Budget=${model.proposedBudget}, Status=${model.status}');
-        return model;
+        return ApplicationModel.fromJson(json as Map<String, dynamic>);
       },
     );
 
     _setLoading(false);
-    dev.log(
-      '[ApplicationController] applyToTask response: success=${response.isSuccess} / message=${response.message}',
-    );
 
     if (response.isSuccess) {
-      dev.log('[ApplicationController] applyToTask SUCCESS - Fetching notifications...');
       await _notificationController.fetchNotifications();
       return true;
     } else {
-      dev.log('[ApplicationController] applyToTask FAILED: ${response.message}');
       _setError(response.message ?? 'Erreur lors de la candidature');
       return false;
+    }
+  }
+
+  List<ApplicationModel> _applications = [];
+  // Correction de la petite typo "post" -> "get"
+  List<ApplicationModel> get applications => _applications;
+
+  /// Charger mes candidatures (Fait un GET sur /api/v1/applications/my-applications)
+  Future<void> fetchApplications() async {
+    dev.log('[ApplicationController] fetchApplications() started');
+    _setLoading(true);
+    _setError(null);
+
+    final response = await _apiClient.get<List<ApplicationModel>>(
+      endpoint: ApiEndpoints
+          .freelanceMyApplications, // -> /api/v1/applications/my-applications
+      parser: (json) {
+        final list = json as List;
+        return list
+            .map(
+              (item) => ApplicationModel.fromJson(item as Map<String, dynamic>),
+            )
+            .toList();
+      },
+    );
+
+    _setLoading(false);
+
+    if (response.isSuccess && response.data != null) {
+      _applications = response.data!;
+      notifyListeners();
+    } else {
+      _setError(response.message ?? 'Impossible de charger vos candidatures');
     }
   }
 }

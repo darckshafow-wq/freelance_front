@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/shared/notification_controller.dart';
 import '../../../../models/shared/notification_model.dart';
 
@@ -11,7 +12,9 @@ const Color _kRed = Color(0xFFFF4757);
 const Color _kGreen = Color(0xFF2ED573);
 
 class ListeNotificationView extends StatefulWidget {
-  const ListeNotificationView({super.key});
+  final AuthController? authController;
+
+  const ListeNotificationView({super.key, this.authController});
 
   @override
   State<ListeNotificationView> createState() => _ListeNotificationViewState();
@@ -19,12 +22,15 @@ class ListeNotificationView extends StatefulWidget {
 
 class _ListeNotificationViewState extends State<ListeNotificationView>
     with SingleTickerProviderStateMixin {
-  final NotificationController _ctrl = NotificationController();
+  late final NotificationController _ctrl;
   late TabController _tabCtrl;
 
   @override
   void initState() {
     super.initState();
+    _ctrl = NotificationController(
+      role: widget.authController?.currentUser?.role,
+    );
     _tabCtrl = TabController(length: 2, vsync: this);
     _ctrl.addListener(_refresh);
     WidgetsBinding.instance.addPostFrameCallback(

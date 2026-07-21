@@ -22,6 +22,7 @@ class _CreateMissionViewState extends State<CreateMissionView> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _budgetController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
 
   DateTime? _selectedDeadline;
   bool _isSubmitting = false;
@@ -31,6 +32,7 @@ class _CreateMissionViewState extends State<CreateMissionView> {
     _titleController.dispose();
     _descriptionController.dispose();
     _budgetController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -69,7 +71,7 @@ class _CreateMissionViewState extends State<CreateMissionView> {
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         budget: double.parse(_budgetController.text.trim()),
-        deadline: _selectedDeadline,
+        location: _locationController.text.trim(),
       );
 
       if (success && mounted) {
@@ -79,7 +81,16 @@ class _CreateMissionViewState extends State<CreateMissionView> {
             backgroundColor: AppColors.success,
           ),
         );
-        Navigator.pop(context); // Retour au tableau de bord
+        Navigator.pop(context, true);
+      } else if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _taskController.errorMessage ?? 'Impossible de créer la mission.',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -207,6 +218,18 @@ class _CreateMissionViewState extends State<CreateMissionView> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Champ 4 : Localisation (optionnelle)
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: _buildInputDecoration(
+                        hintText: 'Ex: Abidjan, Plateau',
+                        labelText: 'Localisation (optionnelle)',
+                        icon: Icons.location_on_outlined,
+                        theme: theme,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -343,11 +366,15 @@ class _CreateMissionViewState extends State<CreateMissionView> {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.05)),
+        borderSide: BorderSide(
+          color: theme.dividerColor.withValues(alpha: 0.05),
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
+        borderSide: BorderSide(
+          color: theme.dividerColor.withValues(alpha: 0.1),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

@@ -14,11 +14,9 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Récupération dynamique des données passées via les arguments de navigation
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
-    // Extraction des champs réels transmis par la page d'accueil
     final int taskId = args?['id'] ?? 0;
     final String title = args?['title'] ?? 'Sans titre';
     final double budgetValue =
@@ -28,15 +26,11 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
         args?['description'] ?? 'Aucune description fournie.';
     final String? deadlineStr = args?['deadline'];
 
-    // ... (rest of the logic for duration)
-
-    // Valeurs par défaut pour les éléments non présents dans le modèle de tâche basique
     final String clientName = args?['clientName'] ?? 'Client Anonyme';
     final List<String> tags = List<String>.from(
       args?['tags'] ?? ['Tech', 'Remote'],
     );
 
-    // Calcul de la durée restante si la deadline est présente
     String duration = 'Flexible';
     if (deadlineStr != null) {
       final deadline = DateTime.tryParse(deadlineStr);
@@ -52,13 +46,11 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
       backgroundColor: const Color(0xFFFDFBF7),
       body: Stack(
         children: [
-          // ─── Contenu défilant ────────────────────────────────────────────
           SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 40),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Bannière haute avec icône
                 Container(
                   height: 260,
                   width: double.infinity,
@@ -77,14 +69,11 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                     ),
                   ),
                 ),
-
-                // Corps des détails
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nom du client / entreprise
                       Text(
                         clientName.toUpperCase(),
                         style: const TextStyle(
@@ -95,8 +84,6 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-
-                      // Titre de la mission
                       Text(
                         title,
                         style: const TextStyle(
@@ -106,8 +93,6 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // Tags / Badges
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -138,8 +123,6 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                             .toList(),
                       ),
                       const SizedBox(height: 28),
-
-                      // Section Rémunération + Bouton Postuler
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -177,15 +160,13 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                                     Text(
                                       budget,
                                       style: const TextStyle(
-                                        fontSize:
-                                            24, // Ajusté pour les montants longs en F CFA
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w900,
                                         color: Color(0xFFFFB000),
                                       ),
                                     ),
                                   ],
                                 ),
-                                // Badge durée
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -209,89 +190,33 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                               ],
                             ),
                             const SizedBox(height: 16),
-
-                            // Bouton Postuler
                             SizedBox(
                               width: double.infinity,
                               height: 52,
                               child: ElevatedButton(
-                                onPressed: _applicationController.isLoading
-                                    ? null
-                                    : () async {
-                                        if (taskId <= 0) {
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Cette mission n\'est pas valide pour une candidature.',
-                                                ),
-                                                backgroundColor:
-                                                    AppColors.error,
-                                              ),
-                                            );
-                                          }
-                                          return;
-                                        }
-
-                                        final success =
-                                            await _applicationController
-                                                .applyToTask(
-                                                  taskId: taskId,
-                                                  budget: budgetValue,
-                                                );
-
-                                        if (mounted) {
-                                          if (!mounted) return;
-                                          final messenger =
-                                              ScaffoldMessenger.of(context);
-                                          if (success) {
-                                            messenger.showSnackBar(
-                                              SnackBar(
-                                                content: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons
-                                                          .check_circle_outline,
-                                                      color: Colors.white,
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Text(
-                                                        'Votre candidature pour "$title" a été envoyée !',
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                backgroundColor:
-                                                    AppColors.success,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                ),
-                                                margin: const EdgeInsets.all(
-                                                  16,
-                                                ),
-                                              ),
-                                            );
-                                          } else {
-                                            messenger.showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  _applicationController
-                                                          .errorMessage ??
-                                                      'Erreur lors de l\'envoi',
-                                                ),
-                                                backgroundColor:
-                                                    AppColors.error,
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
+                                onPressed: () {
+                                  if (taskId <= 0) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Cette mission n\'est pas valide pour une candidature.',
+                                          ),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  _showPostulateBottomSheet(
+                                    context,
+                                    taskId: taskId,
+                                    taskTitle: title,
+                                    budgetValue: budgetValue,
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFFB000),
                                   foregroundColor: Colors.white,
@@ -300,41 +225,26 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
                                   ),
                                   elevation: 0,
                                 ),
-                                child: _applicationController.isLoading
-                                    ? const SizedBox(
-                                        height: 24,
-                                        width: 24,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            'Postuler',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Icon(
-                                            Icons.arrow_forward_rounded,
-                                            size: 18,
-                                          ),
-                                        ],
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Postuler',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(Icons.arrow_forward_rounded, size: 18),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 32),
-
-                      // Section Description
                       const Text(
                         'Description du projet',
                         style: TextStyle(
@@ -358,8 +268,6 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
               ],
             ),
           ),
-
-          // ─── Bouton Retour flottant ───
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(top: 8, left: 16),
@@ -380,6 +288,337 @@ class _FreelanceJobDetailPageState extends State<FreelanceJobDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // ─── BottomSheet de postulation ───────────────────────────────────────────
+  void _showPostulateBottomSheet(
+    BuildContext context, {
+    required int taskId,
+    required String taskTitle,
+    required double budgetValue,
+  }) {
+    final coverLetterController = TextEditingController();
+    final coverBudgetController = TextEditingController();
+    bool isSending = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setBottomSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFDFBF7),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Postuler à cette mission',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2D2D2D),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        taskTitle,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Bloc affichage Budget de Base
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFFFB000,
+                          ).withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFFB000,
+                            ).withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: Color(0xFFFFB000),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Budget indicatif du client',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.black45,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${budgetValue.toStringAsFixed(0)} F CFA',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFFFFB000),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Section Saisie Proposition de Budget Extrait et Redimensionné
+                      const Text(
+                        'Votre proposition tarifaire (F CFA)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2D2D2D),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        keyboardType: TextInputType.number,
+                        controller: coverBudgetController,
+                        maxLines: 1,
+                        maxLength: 9,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Ex: ${(budgetValue * 0.95).toStringAsFixed(0)}',
+                          hintStyle: const TextStyle(
+                            color: Colors.black26,
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.all(16),
+                          counterText: "",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: Colors.black.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: Colors.black.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFFFB000),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      const Text(
+                        'Lettre de motivation (facultatif)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2D2D2D),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: coverLetterController,
+                        maxLines: 4,
+                        maxLength: 1000,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Décrivez pourquoi vous êtes le bon candidat pour cette mission...',
+                          hintStyle: const TextStyle(
+                            color: Colors.black26,
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.all(16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: Colors.black.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: Colors.black.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFFFB000),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: isSending
+                              ? null
+                              : () async {
+                                  // Extraction et validation dynamique de la proposition budgétaire saisie
+                                  final double customBudget =
+                                      double.tryParse(
+                                        coverBudgetController.text.trim(),
+                                      ) ??
+                                      budgetValue;
+
+                                  setBottomSheetState(() => isSending = true);
+
+                                  final success = await _applicationController
+                                      .applyToTask(
+                                        taskId: taskId,
+                                        budget:
+                                            customBudget, // Injection dynamique de la valeur saisie
+                                        coverLetter: coverLetterController.text
+                                            .trim(),
+                                      );
+
+                                  setBottomSheetState(() => isSending = false);
+
+                                  if (!context.mounted) return;
+                                  Navigator.pop(bottomSheetContext);
+
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
+                                  if (success) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.check_circle_outline,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Votre candidature pour "$taskTitle" a été envoyée !',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: AppColors.success,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        margin: const EdgeInsets.all(16),
+                                      ),
+                                    );
+                                  } else {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          _applicationController.errorMessage ??
+                                              'Erreur lors de l\'envoi',
+                                        ),
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                    );
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFB000),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: const Color(
+                              0xFFFFB000,
+                            ).withValues(alpha: 0.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: isSending
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.send_rounded, size: 18),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Envoyer ma candidature',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

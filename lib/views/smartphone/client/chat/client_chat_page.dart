@@ -4,7 +4,22 @@ import '../../../../services/api/api_core.dart';
 import '../../../../services/api/api_endpoints.dart';
 import '../../../../constants/app_colors.dart';
 
-// ─── Modèle léger pour un message ────────────────────────────────────────────
+class ClientChatPage extends StatefulWidget {
+  final int otherUserId;
+  final String? otherUserName;
+  final int? taskId;
+
+  const ClientChatPage({
+    super.key,
+    this.otherUserId = 0,
+    this.otherUserName,
+    this.taskId,
+  });
+
+  @override
+  State<ClientChatPage> createState() => _ClientChatPageState();
+}
+
 class _MessageModel {
   final int id;
   final String content;
@@ -36,24 +51,7 @@ class _MessageModel {
   }
 }
 
-// ─── Page de chat active ──────────────────────────────────────────────────────
-class FreelanceChatPage extends StatefulWidget {
-  final int otherUserId;
-  final String? otherUserName;
-  final int? taskId;
-
-  const FreelanceChatPage({
-    super.key,
-    this.otherUserId = 0,
-    this.otherUserName,
-    this.taskId,
-  });
-
-  @override
-  State<FreelanceChatPage> createState() => _FreelanceChatPageState();
-}
-
-class _FreelanceChatPageState extends State<FreelanceChatPage> {
+class _ClientChatPageState extends State<ClientChatPage> {
   final ApiClient _apiClient = ApiClient();
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -62,11 +60,7 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
   bool _isLoading = true;
   bool _isSending = false;
   String? _error;
-
   int _currentUserId = 1;
-
-  static const Color _kAmber = Color(0xFFFFB000);
-  static const Color _kBg = Color(0xFFFDFBF7);
 
   @override
   void initState() {
@@ -86,8 +80,6 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
     await _fetchMessages();
   }
 
-  /// METHODE : _resolveCurrentUser()
-  /// ENDPOINT APPELÉ : ApiEndpoints.me (".../api/v1/users/me")
   Future<void> _resolveCurrentUser() async {
     try {
       final resp = await _apiClient.get<Map<String, dynamic>>(
@@ -98,15 +90,13 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
         setState(() {
           _currentUserId = resp.data!['id'] as int? ?? 0;
         });
-        dev.log('[FreelanceChatPage] currentUserId résolu : $_currentUserId');
+        dev.log('[ClientChatPage] currentUserId résolu : $_currentUserId');
       }
     } catch (e) {
       dev.log('Erreur lors de la résolution de l\'utilisateur courant : $e');
     }
   }
 
-  /// METHODE : _fetchMessages()
-  /// ENDPOINT APPELÉ : GET /api/v1/messages/{other_user_id}
   Future<void> _fetchMessages() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -119,11 +109,9 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
       return;
     }
 
-    // Ciblage direct de la route GET /api/v1/freelance/messages/{other_user_id}
     final String targetEndpoint = ApiEndpoints.freelanceMessages(
       widget.otherUserId,
     );
-
     final resp = await _apiClient.get<List<_MessageModel>>(
       endpoint: targetEndpoint,
       parser: (json) {
@@ -137,7 +125,6 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
     if (!mounted) return;
     if (resp.isSuccess && resp.data != null) {
       setState(() {
-        // Renverse la liste si ton API retourne le plus récent en premier (order_by timestamp desc)
         _messages = resp.data!.reversed.toList();
         _isLoading = false;
         _error = null;
@@ -151,8 +138,6 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
     }
   }
 
-  /// METHODE : _sendMessage()
-  /// ENDPOINT APPELÉ : POST /api/v1/messages/
   Future<void> _sendMessage() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _isSending || widget.otherUserId <= 0) return;
@@ -160,14 +145,12 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
     setState(() => _isSending = true);
     _inputController.clear();
 
-    // Structuration du corps selon le schéma Pydantic MessageCreate du backend
     final Map<String, dynamic> requestBody = {
       'content': text,
       'receiver_id': widget.otherUserId,
-      'task_id': widget.taskId, // Sera envoyé ou restera null selon le cas
+      'task_id': widget.taskId,
     };
 
-    // Appel du POST sur la racine globale du routeur /messages/ sans injecter l'ID dans l'URL
     final resp = await _apiClient.post<_MessageModel>(
       endpoint: ApiEndpoints.freelanceMessagesPost,
       body: requestBody,
@@ -217,9 +200,9 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
     final title = widget.otherUserName ?? 'Conversation';
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: AppColors.lightBackground,
       appBar: AppBar(
-        backgroundColor: _kAmber,
+        backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Row(
@@ -268,7 +251,9 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
         children: [
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: _kAmber))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.accent),
+                  )
                 : _error != null
                 ? Center(
                     child: Padding(
@@ -385,7 +370,7 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
                               padding: EdgeInsets.all(10),
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: _kAmber,
+                                color: AppColors.accent,
                               ),
                             ),
                           )
@@ -395,7 +380,7 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
                               width: 44,
                               height: 44,
                               decoration: const BoxDecoration(
-                                color: _kAmber,
+                                color: AppColors.accent,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -416,86 +401,72 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
   }
 }
 
-// ─── Bulle de message ─────────────────────────────────────────────────────────
 class _MessageBubble extends StatelessWidget {
-  final _MessageModel message;
-  final bool isMe;
-  final String Function(DateTime) formatTime;
-
   const _MessageBubble({
     required this.message,
     required this.isMe,
     required this.formatTime,
   });
 
+  final _MessageModel message;
+  final bool isMe;
+  final String Function(DateTime) formatTime;
+
   @override
   Widget build(BuildContext context) {
-    const Color kAmber = Color(0xFFFFB000);
-    const Color kAmberLight = Color(0xFFFFEDC1);
+    final backgroundColor = isMe
+        ? const Color(0xFFFFE7B8)
+        : const Color(0xFFFFFFFF);
+    final textColor = isMe ? Colors.black87 : Colors.black87;
+    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(18),
+      topRight: const Radius.circular(18),
+      bottomLeft: Radius.circular(isMe ? 18 : 6),
+      bottomRight: Radius.circular(isMe ? 6 : 18),
+    );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: alignment,
         children: [
-          if (!isMe) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: kAmberLight,
-              child: const Icon(Icons.person, size: 18, color: kAmber),
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
             ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isMe ? kAmber : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isMe ? 18 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 18),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: borderRadius,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.content,
+                  style: TextStyle(color: textColor, fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  formatTime(message.timestamp),
+                  style: TextStyle(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    fontSize: 11,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: isMe
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isMe ? Colors.white : const Color(0xFF2D2D2D),
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formatTime(message.timestamp),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : Colors.black38,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          if (isMe) const SizedBox(width: 4),
         ],
       ),
     );

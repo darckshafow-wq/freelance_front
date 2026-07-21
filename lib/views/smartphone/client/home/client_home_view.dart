@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
 // Remonter de 4 niveaux pour aller chercher les contrôleurs et constantes
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../models/client/task_model.dart';
 import '../../../../routes/app_router.dart';
+import '../../../../routes/client_routes.dart';
 import '../../../../controllers/shared/notification_controller.dart';
 
 // Remonter de 4 niveaux pour aller chercher les widgets partagés
@@ -23,7 +22,7 @@ class ClientHomeView extends StatefulWidget {
 
 class _ClientHomeViewState extends State<ClientHomeView> {
   final TaskController _taskController = TaskController();
-  final NotificationController _notificationController = NotificationController();
+  late final NotificationController _notificationController;
 
   // Index de l'onglet actif (0 = Accueil, 1 = Profil)
   int _currentIndex = 0;
@@ -31,6 +30,9 @@ class _ClientHomeViewState extends State<ClientHomeView> {
   @override
   void initState() {
     super.initState();
+    _notificationController = NotificationController(
+      role: widget.authController.currentUser?.role,
+    );
     _taskController.addListener(_onTaskStateChanged);
     _notificationController.addListener(_onNotificationStateChanged);
 
@@ -107,7 +109,11 @@ class _ClientHomeViewState extends State<ClientHomeView> {
         actions: [
           IconButton(
             onPressed: () async {
-              await Navigator.pushNamed(context, AppRoutes.notifications);
+              await Navigator.pushNamed(
+                context,
+                AppRoutes.notifications,
+                arguments: widget.authController,
+              );
               // Rafraîchir le badge après retour à l’écran
               if (mounted) setState(() {});
             },
@@ -178,13 +184,37 @@ class _ClientHomeViewState extends State<ClientHomeView> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.assignment_outlined),
-              title: const Text('Mes Missions Postées'),
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: const Text('Messages'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(
                   context,
-                  '/tasks',
+                  ClientRouteNames.chat,
+                  arguments: widget.authController,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.assignment_outlined),
+              title: const Text('Mes Missions'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(
+                  context,
+                  ClientRouteNames.missions,
+                  arguments: widget.authController,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.how_to_reg_outlined),
+              title: const Text('Mes candidatures'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(
+                  context,
+                  ClientRouteNames.applications,
                   arguments: widget.authController,
                 );
               },
@@ -197,7 +227,7 @@ class _ClientHomeViewState extends State<ClientHomeView> {
                 Navigator.pop(context);
                 Navigator.pushNamed(
                   context,
-                  '/profile',
+                  ClientRouteNames.profile,
                   arguments: widget.authController,
                 );
               },
@@ -231,12 +261,15 @@ class _ClientHomeViewState extends State<ClientHomeView> {
 
       // --- FLOATING ACTION BUTTON POUR CREER UNE MISSION ---
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(
+        onPressed: () async {
+          final created = await Navigator.pushNamed(
             context,
-            '/smartphone/client/missions/create_mission_view',
+            ClientRouteNames.createMission,
             arguments: widget.authController,
           );
+          if (created == true) {
+            _taskController.fetchTasks();
+          }
         },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -296,6 +329,55 @@ class _ClientHomeViewState extends State<ClientHomeView> {
               ),
               const SizedBox(height: 20),
 
+              // --- ACTIONS RAPIDES ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.assignment_outlined,
+                      label: 'Missions',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          ClientRouteNames.missions,
+                          arguments: widget.authController,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.chat_bubble_outline,
+                      label: 'Messages',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          ClientRouteNames.chat,
+                          arguments: widget.authController,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.person_outline,
+                      label: 'Profil',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          ClientRouteNames.profile,
+                          arguments: widget.authController,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
               // --- BARRE DE RECHERCHE RAPIDE ---
               TextField(
                 decoration: InputDecoration(
@@ -320,82 +402,34 @@ class _ClientHomeViewState extends State<ClientHomeView> {
               ),
               const SizedBox(height: 28),
 
-              // --- CARTE GOOGLE MAPS (PLACEHOLDER) ---
-              Text(
-                'Missions à proximité',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: theme.colorScheme.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.shadowColor.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  children: [
-                    // Placeholder pour GoogleMap API
-                    const GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(5.366, -3.966), // Abidjan par défaut
-                        zoom: 12,
-                      ),
-                      myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
-                    ),
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        child: const Center(
-                          child: Text(
-                            'Chargement de la carte...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              shadows: [
-                                Shadow(blurRadius: 2, color: Colors.black),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-
               // --- TITRE DE SECTION ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Missions Disponibles',
+                    'Toutes les missions',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () => _taskController.fetchTasks(),
-                    icon: const Icon(Icons.tune, size: 16),
-                    label: const Text(
-                      'Filtres',
-                      style: TextStyle(fontSize: 13),
+                  if (!_taskController.isLoading &&
+                      _taskController.tasks.isNotEmpty)
+                    Text(
+                      '${_taskController.tasks.length} missions',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.hintColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
+
+              TextButton.icon(
+                onPressed: () => _taskController.fetchTasks(),
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Rafraîchir', style: TextStyle(fontSize: 13)),
               ),
               const SizedBox(height: 12),
 
@@ -601,6 +635,58 @@ class _ClientHomeViewState extends State<ClientHomeView> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.lightBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
         ),
       ),
     );
