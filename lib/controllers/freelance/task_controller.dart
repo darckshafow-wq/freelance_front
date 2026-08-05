@@ -35,22 +35,38 @@ class FreelanceTaskController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
 
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      _homeTasks = [
+        TaskModel(id: 10, title: 'UI/UX Design - Fintech', description: 'Design complet d\'une interface bancaire.', budget: 450000, status: TaskStatus.pending, clientId: 1),
+        TaskModel(id: 11, title: 'Maintenance Serveur Linux', description: 'Optimisation et sécurisation.', budget: 200000, status: TaskStatus.pending, clientId: 1),
+      ];
+      _setLoading(false);
+      return;
+    }
+
     final response = await _apiClient.get<List<TaskModel>>(
       endpoint: ApiEndpoints.freelanceTasks,
       parser: (json) {
-        dev.log('[FreelanceTaskController] fetchHomeTasks - Parsing Raw JSON: $json');
+        dev.log(
+          '[FreelanceTaskController] fetchHomeTasks - Parsing Raw JSON: $json',
+        );
         if (json is List) {
-          final tasks = json
-              .map((item) {
-                dev.log('[FreelanceTaskController] fetchHomeTasks - Processing Raw Item: $item');
-                final model = TaskModel.fromJson(item as Map<String, dynamic>);
-                dev.log('[FreelanceTaskController] fetchHomeTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}');
-                return model;
-              })
-              .toList();
+          final tasks = json.map((item) {
+            dev.log(
+              '[FreelanceTaskController] fetchHomeTasks - Processing Raw Item: $item',
+            );
+            final model = TaskModel.fromJson(item as Map<String, dynamic>);
+            dev.log(
+              '[FreelanceTaskController] fetchHomeTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}',
+            );
+            return model;
+          }).toList();
           return tasks;
         }
-        dev.log('[FreelanceTaskController] fetchHomeTasks - Warning: JSON is not a List!');
+        dev.log(
+          '[FreelanceTaskController] fetchHomeTasks - Warning: JSON is not a List!',
+        );
         return <TaskModel>[];
       },
     );
@@ -63,10 +79,14 @@ class FreelanceTaskController extends ChangeNotifier {
 
     if (response.isSuccess && response.data != null) {
       _homeTasks = response.data!;
-      dev.log('[FreelanceTaskController] fetchHomeTasks - Injected ${_homeTasks.length} tasks into state.');
+      dev.log(
+        '[FreelanceTaskController] fetchHomeTasks - Injected ${_homeTasks.length} tasks into state.',
+      );
       notifyListeners();
     } else {
-      dev.log('[FreelanceTaskController] fetchHomeTasks - Failed: ${response.message}');
+      dev.log(
+        '[FreelanceTaskController] fetchHomeTasks - Failed: ${response.message}',
+      );
       _setError(response.message ?? 'Impossible de charger les missions');
     }
   }
@@ -79,20 +99,28 @@ class FreelanceTaskController extends ChangeNotifier {
     final response = await _apiClient.get<List<TaskModel>>(
       endpoint: ApiEndpoints.freelanceMyApplications,
       parser: (json) {
-        dev.log('[FreelanceTaskController] fetchAppliedTasks - Parsing Raw JSON: $json');
+        dev.log(
+          '[FreelanceTaskController] fetchAppliedTasks - Parsing Raw JSON: $json',
+        );
         if (json is List) {
-          final tasks = json
-              .map((item) {
-                dev.log('[FreelanceTaskController] fetchAppliedTasks - Processing Raw Item: $item');
-                final appModel = ApplicationModel.fromJson(item as Map<String, dynamic>);
-                final model = _mapApplicationToTask(appModel);
-                dev.log('[FreelanceTaskController] fetchAppliedTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}');
-                return model;
-              })
-              .toList();
+          final tasks = json.map((item) {
+            dev.log(
+              '[FreelanceTaskController] fetchAppliedTasks - Processing Raw Item: $item',
+            );
+            final appModel = ApplicationModel.fromJson(
+              item as Map<String, dynamic>,
+            );
+            final model = _mapApplicationToTask(appModel);
+            dev.log(
+              '[FreelanceTaskController] fetchAppliedTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}',
+            );
+            return model;
+          }).toList();
           return tasks;
         }
-        dev.log('[FreelanceTaskController] fetchAppliedTasks - Warning: JSON is not a List!');
+        dev.log(
+          '[FreelanceTaskController] fetchAppliedTasks - Warning: JSON is not a List!',
+        );
         return <TaskModel>[];
       },
     );
@@ -105,10 +133,14 @@ class FreelanceTaskController extends ChangeNotifier {
 
     if (response.isSuccess && response.data != null) {
       _appliedTasks = response.data!;
-      dev.log('[FreelanceTaskController] fetchAppliedTasks - Injected ${_appliedTasks.length} applied tasks into state.');
+      dev.log(
+        '[FreelanceTaskController] fetchAppliedTasks - Injected ${_appliedTasks.length} applied tasks into state.',
+      );
       notifyListeners();
     } else {
-      dev.log('[FreelanceTaskController] fetchAppliedTasks - Failed: ${response.message}');
+      dev.log(
+        '[FreelanceTaskController] fetchAppliedTasks - Failed: ${response.message}',
+      );
       _setError(response.message ?? 'Impossible de charger vos candidatures');
     }
   }
@@ -121,20 +153,28 @@ class FreelanceTaskController extends ChangeNotifier {
     final response = await _apiClient.get<List<TaskModel>>(
       endpoint: '${ApiEndpoints.freelanceApplications}?status=accepted',
       parser: (json) {
-        dev.log('[FreelanceTaskController] fetchCompletedTasks - Parsing Raw JSON: $json');
+        dev.log(
+          '[FreelanceTaskController] fetchCompletedTasks - Parsing Raw JSON: $json',
+        );
         if (json is List) {
-          final tasks = json
-              .map((item) {
-                dev.log('[FreelanceTaskController] fetchCompletedTasks - Processing Raw Item: $item');
-                final appModel = ApplicationModel.fromJson(item as Map<String, dynamic>);
-                final model = _mapApplicationToTask(appModel);
-                dev.log('[FreelanceTaskController] fetchCompletedTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}');
-                return model;
-              })
-              .toList();
+          final tasks = json.map((item) {
+            dev.log(
+              '[FreelanceTaskController] fetchCompletedTasks - Processing Raw Item: $item',
+            );
+            final appModel = ApplicationModel.fromJson(
+              item as Map<String, dynamic>,
+            );
+            final model = _mapApplicationToTask(appModel);
+            dev.log(
+              '[FreelanceTaskController] fetchCompletedTasks - Parsed TaskModel: ID=${model.id}, Title="${model.title}", Budget=${model.budget}, Status=${model.status}',
+            );
+            return model;
+          }).toList();
           return tasks;
         }
-        dev.log('[FreelanceTaskController] fetchCompletedTasks - Warning: JSON is not a List!');
+        dev.log(
+          '[FreelanceTaskController] fetchCompletedTasks - Warning: JSON is not a List!',
+        );
         return <TaskModel>[];
       },
     );
@@ -147,10 +187,14 @@ class FreelanceTaskController extends ChangeNotifier {
 
     if (response.isSuccess && response.data != null) {
       _completedTasks = response.data!;
-      dev.log('[FreelanceTaskController] fetchCompletedTasks - Injected ${_completedTasks.length} completed tasks into state.');
+      dev.log(
+        '[FreelanceTaskController] fetchCompletedTasks - Injected ${_completedTasks.length} completed tasks into state.',
+      );
       notifyListeners();
     } else {
-      dev.log('[FreelanceTaskController] fetchCompletedTasks - Failed: ${response.message}');
+      dev.log(
+        '[FreelanceTaskController] fetchCompletedTasks - Failed: ${response.message}',
+      );
       _setError(
         response.message ?? 'Impossible de charger les missions terminées',
       );

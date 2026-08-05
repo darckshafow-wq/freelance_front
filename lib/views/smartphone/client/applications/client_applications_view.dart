@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../controllers/client/application_controller.dart';
 import '../../../../models/freelance/application_model.dart';
 import '../../../../routes/client_routes.dart';
+import '../../../../utils/ui/ui_utils.dart';
 
 class ClientApplicationsView extends StatefulWidget {
   const ClientApplicationsView({super.key});
@@ -12,19 +14,18 @@ class ClientApplicationsView extends StatefulWidget {
 }
 
 class _ClientApplicationsViewState extends State<ClientApplicationsView> {
-  final ClientApplicationController _controller = ClientApplicationController();
   ApplicationStatus _selectedStatus = ApplicationStatus.pending;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.fetchApplications();
+      context.read<ClientApplicationController>().fetchApplications();
     });
   }
 
-  List<ApplicationModel> get _filteredApplications {
-    return _controller.applications
+  List<ApplicationModel> _getFilteredApplications(ClientApplicationController controller) {
+    return controller.applications
         .where((application) => application.status == _selectedStatus)
         .toList();
   }
@@ -38,7 +39,9 @@ class _ClientApplicationsViewState extends State<ClientApplicationsView> {
   String _statusLabel(ApplicationStatus status) {
     switch (status) {
       case ApplicationStatus.pending:
-        return 'Postulées';
+        return 'En attente';
+      case ApplicationStatus.interview:
+        return 'Entretien';
       case ApplicationStatus.accepted:
         return 'Confirmées';
       case ApplicationStatus.rejected:
@@ -49,11 +52,13 @@ class _ClientApplicationsViewState extends State<ClientApplicationsView> {
   Color _statusColor(ApplicationStatus status) {
     switch (status) {
       case ApplicationStatus.pending:
-        return AppColors.warning;
+        return Colors.orange;
+      case ApplicationStatus.interview:
+        return const Color(0xFF7C3AED); // violet — phase active
       case ApplicationStatus.accepted:
-        return AppColors.success;
+        return Colors.green;
       case ApplicationStatus.rejected:
-        return AppColors.error;
+        return Colors.redAccent;
     }
   }
 
@@ -61,284 +66,225 @@ class _ClientApplicationsViewState extends State<ClientApplicationsView> {
     int applicationId, {
     required bool accept,
   }) async {
+    final controller = context.read<ClientApplicationController>();
     final bool success = accept
-        ? await _controller.acceptApplication(applicationId)
-        : await _controller.rejectApplication(applicationId);
+        ? await controller.acceptApplication(applicationId)
+        : await controller.rejectApplication(applicationId);
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Candidature ${accept ? 'acceptée' : 'refusée'} avec succès.'
-              : _controller.errorMessage ??
-                    'Impossible de modifier le statut de la candidature.',
-        ),
-        backgroundColor: success
-            ? AppColors.success
-            : Theme.of(context).colorScheme.error,
-      ),
-    );
+    if (success) {
+      UIUtils.showSuccess(context, 'Candidature ${accept ? 'acceptée' : 'refusée'} avec succès.');
+    } else {
+      UIUtils.showError(context, controller.errorMessage ?? 'Impossible de modifier le statut.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final applicationController = context.watch<ClientApplicationController>();
+    final filteredApplications = _getFilteredApplications(applicationController);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Mes candidatures'),
         backgroundColor: Colors.white,
-        foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Candidatures',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: Colors.black,
+            letterSpacing: -0.5,
+          ),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () => _controller.fetchApplications(),
-            icon: const Icon(Icons.refresh, size: 22),
+            onPressed: () => applicationController.fetchApplications(),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.black),
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => _controller.fetchApplications(),
-        color: AppColors.primary,
-        child: ListenableBuilder(
-          listenable: _controller,
-          builder: (context, child) {
-            if (_controller.isLoading && _controller.applications.isEmpty) {
+        onRefresh: () => applicationController.fetchApplications(),
+        color: Colors.black,
+        backgroundColor: AppColors.primary,
+        child: Builder(
+          builder: (context) {
+            if (applicationController.isLoading && applicationController.applications.isEmpty) {
               return const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 3,
-                ),
-              );
-            }
-
-            if (_controller.errorMessage != null &&
-                _controller.applications.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.error_outline_rounded,
-                          size: 40,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _controller.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () => _controller.fetchApplications(),
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Réessayer'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            if (_controller.applications.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.how_to_reg_outlined,
-                          size: 64,
-                          color: AppColors.primary.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Aucune candidature reçue',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Les candidatures envoyées pour vos missions apparaîtront ici.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
+                child: CircularProgressIndicator(color: Colors.black),
               );
             }
 
             final statusCounts = {
-              ApplicationStatus.pending: _controller.applications
+              ApplicationStatus.pending: applicationController.applications
                   .where((app) => app.status == ApplicationStatus.pending)
                   .length,
-              ApplicationStatus.accepted: _controller.applications
+              ApplicationStatus.interview: applicationController.applications
+                  .where((app) => app.status == ApplicationStatus.interview)
+                  .length,
+              ApplicationStatus.accepted: applicationController.applications
                   .where((app) => app.status == ApplicationStatus.accepted)
                   .length,
-              ApplicationStatus.rejected: _controller.applications
+              ApplicationStatus.rejected: applicationController.applications
                   .where((app) => app.status == ApplicationStatus.rejected)
                   .length,
             };
 
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+            return Column(
               children: [
-                Row(
-                  children: ApplicationStatus.values.map((status) {
-                    final bool isSelected = status == _selectedStatus;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ElevatedButton(
-                          onPressed: () => _changeStatus(status),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected
-                                ? _statusColor(status)
-                                : Colors.white,
-                            foregroundColor: isSelected
-                                ? Colors.white
-                                : Colors.black87,
-                            elevation: isSelected ? 2 : 0,
-                            side: BorderSide(color: AppColors.lightBorder),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                _statusLabel(status),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${statusCounts[status] ?? 0}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                if (_filteredApplications.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.assignment_late_outlined,
-                          size: 56,
-                          color: AppColors.lightTextSecondary,
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Aucune candidature ${_selectedStatus == ApplicationStatus.pending
-                              ? 'en attente'
-                              : _selectedStatus == ApplicationStatus.accepted
-                              ? 'confirmée'
-                              : 'rejetée'} pour le moment.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                  )
-                else
-                  ..._filteredApplications.map(
-                    (application) => _ApplicationCard(
-                      application: application,
-                      statusColor: _statusColor(application.status),
-                      onMessageTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          ClientRouteNames.chatDetail,
-                          arguments: {
-                            'otherUserId': application.freelancerId,
-                            'otherUserName':
-                                'Freelance #${application.freelancerId}',
-                            'taskId': application.taskId,
-                          },
+                    child: Row(
+                      children: ApplicationStatus.values.map((status) {
+                        final bool isSelected = status == _selectedStatus;
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () => _changeStatus(status),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.05,
+                                          ),
+                                          blurRadius: 5,
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _statusLabel(status),
+                                    style: TextStyle(
+                                      fontWeight: isSelected
+                                          ? FontWeight.w900
+                                          : FontWeight.w700,
+                                      fontSize: 12,
+                                      color: isSelected
+                                          ? Colors.black
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${statusCounts[status] ?? 0}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : Colors.grey[400],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         );
-                      },
-                      onAccept: application.status == ApplicationStatus.pending
-                          ? () => _handleApplicationDecision(
-                              application.id,
-                              accept: true,
-                            )
-                          : null,
-                      onReject: application.status == ApplicationStatus.pending
-                          ? () => _handleApplicationDecision(
-                              application.id,
-                              accept: false,
-                            )
-                          : null,
+                      }).toList(),
                     ),
                   ),
+                ),
+                Expanded(
+                  child: filteredApplications.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          itemCount: filteredApplications.length,
+                          itemBuilder: (context, index) {
+                            final application = filteredApplications[index];
+                            return _ApplicationCard(
+                              application: application,
+                              statusColor: _statusColor(application.status),
+                              // Contacter visible si pending OU interview (pas rejected/accepted)
+                              onMessageTap: (application.status == ApplicationStatus.pending ||
+                                      application.status == ApplicationStatus.interview)
+                                  ? () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        ClientRouteNames.chatDetail,
+                                        arguments: {
+                                          'otherUserId': application.freelancerId,
+                                          'otherUserName':
+                                              'Freelance #${application.freelancerId}',
+                                          'taskId': application.taskId,
+                                        },
+                                      );
+                                    }
+                                  : null,
+                              // Accept/Reject disponibles uniquement en phase INTERVIEW
+                              onAccept:
+                                  application.status == ApplicationStatus.interview
+                                  ? () => _handleApplicationDecision(
+                                      application.id,
+                                      accept: true,
+                                    )
+                                  : null,
+                              onReject:
+                                  application.status == ApplicationStatus.interview
+                                  ? () => _handleApplicationDecision(
+                                      application.id,
+                                      accept: false,
+                                    )
+                                  : null,
+                            );
+                          },
+                        ),
+                ),
               ],
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.how_to_reg_rounded, size: 80, color: Colors.grey[200]),
+          const SizedBox(height: 20),
+          Text(
+            'Aucune candidature ${_statusLabel(_selectedStatus).toLowerCase()}',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -355,45 +301,33 @@ class _ApplicationCard extends StatelessWidget {
 
   final ApplicationModel application;
   final Color statusColor;
-  final VoidCallback onMessageTap;
+  final VoidCallback? onMessageTap; // nullable : null = bouton désactivé
   final VoidCallback? onAccept;
   final VoidCallback? onReject;
-
-  String _statusLabel(ApplicationStatus status) {
-    switch (status) {
-      case ApplicationStatus.pending:
-        return 'En attente';
-      case ApplicationStatus.accepted:
-        return 'Confirmée';
-      case ApplicationStatus.rejected:
-        return 'Rejetée';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final title = application.taskTitle ?? 'Mission sans titre';
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.lightBorder),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey[100]!),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -402,123 +336,144 @@ class _ApplicationCard extends StatelessWidget {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 5),
                       Text(
                         'Freelance #${application.freelancerId}',
                         style: TextStyle(
-                          color: Colors.black.withValues(alpha: 0.55),
+                          color: Colors.grey[400],
                           fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
+                _buildStatusChip(),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Row(
+              children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
-                    vertical: 6,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    _statusLabel(application.status),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                    '${application.proposedBudget.toStringAsFixed(0)} FCFA',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.account_balance_wallet_outlined, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  '${application.proposedBudget.toStringAsFixed(0)} F CFA',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 15),
             Text(
               application.coverLetter.isNotEmpty
                   ? application.coverLetter
                   : 'Pas de message envoyé.',
-              maxLines: 3,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+                height: 1.4,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: onMessageTap,
-                    icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                    label: const Text('Message'),
+                    icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+                    label: const Text('Contacter'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.black,
+                      foregroundColor: AppColors.primary,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(15),
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
-              ],
-            ),
-            if (application.status == ApplicationStatus.pending)
-              const SizedBox(height: 12),
-            if (application.status == ApplicationStatus.pending)
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: onReject,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Refuser'),
-                    ),
+                if (application.status == ApplicationStatus.interview) ...[
+                  const SizedBox(width: 10),
+                  _ActionButton(
+                    icon: Icons.close_rounded,
+                    color: Colors.redAccent,
+                    onTap: onReject!,
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: onAccept,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Accepter'),
-                    ),
+                  _ActionButton(
+                    icon: Icons.check_rounded,
+                    color: Colors.green,
+                    onTap: onAccept!,
                   ),
                 ],
-              ),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        application.status.name.toUpperCase(),
+        style: TextStyle(
+          color: statusColor,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Icon(icon, color: color, size: 22),
       ),
     );
   }

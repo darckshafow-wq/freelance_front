@@ -10,9 +10,11 @@ class ApplicationDetailPage extends StatelessWidget {
   String _getStatusLabel(ApplicationStatus status) {
     switch (status) {
       case ApplicationStatus.accepted:
-        return 'Acceptée';
+        return 'Attribuée';
       case ApplicationStatus.rejected:
-        return 'Refusée';
+        return 'Non retenue';
+      case ApplicationStatus.interview:
+        return 'Entretien en cours';
       case ApplicationStatus.pending:
         return 'En attente';
     }
@@ -24,6 +26,8 @@ class ApplicationDetailPage extends StatelessWidget {
         return const Color(0xFF10B981);
       case ApplicationStatus.rejected:
         return const Color(0xFFEF4444);
+      case ApplicationStatus.interview:
+        return const Color(0xFF7C3AED); // Violet
       case ApplicationStatus.pending:
         return const Color(0xFFF59E0B);
     }

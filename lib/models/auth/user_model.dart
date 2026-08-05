@@ -36,6 +36,7 @@ class UserModel {
   final String fullName;
   final UserRole role;
   final String? phoneNumber;
+  final String? location;
   final DateTime? createdAt;
 
   final bool isActive;
@@ -50,6 +51,7 @@ class UserModel {
     required this.fullName,
     required this.role,
     this.phoneNumber,
+    this.location,
     this.createdAt,
     this.isActive = true,
     this.isClient = false,
@@ -89,11 +91,6 @@ class UserModel {
     }
 
     final parsedId = int.tryParse(json['id']?.toString() ?? '') ?? 0;
-    print('=== DEBUG UserModel.fromJson ===');
-    print('Raw JSON id: ${json['id']}');
-    print('Parsed ID: $parsedId');
-    print('Raw JSON email: ${json['email']}');
-    print('=================================');
 
     return UserModel(
       id: parsedId,
@@ -108,6 +105,7 @@ class UserModel {
       role: role,
       phoneNumber:
           json['phoneNumber']?.toString() ?? json['phone_number']?.toString(),
+      location: json['location']?.toString(),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -135,6 +133,7 @@ class UserModel {
       'full_name': fullName,
       'role': role.toJson(),
       'phone_number': phoneNumber,
+      'location': location,
       'created_at': createdAt?.toIso8601String(),
       'is_active': isActive,
       'is_client': isClient,

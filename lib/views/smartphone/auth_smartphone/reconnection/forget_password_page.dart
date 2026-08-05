@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../constants/app_colors.dart';
+import '../../../desktop/auth/desktop_auth_wrapper.dart';
 
 class ForgetPasswordPage extends StatefulWidget {
   const ForgetPasswordPage({super.key});
@@ -19,7 +20,9 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final bool isDesktop = MediaQuery.of(context).size.width > 800;
+    
+    Widget content = Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -114,5 +117,14 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
         ),
       ),
     );
+
+    if (isDesktop) {
+      return DesktopAuthWrapper(
+        title: 'Mot de passe oublié ?',
+        subtitle: 'Entrez votre adresse email pour réinitialiser votre mot de passe.',
+        child: content,
+      );
+    }
+    return content;
   }
 }

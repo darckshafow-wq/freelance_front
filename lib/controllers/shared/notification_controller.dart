@@ -6,8 +6,17 @@ import '../../services/api/api_endpoints.dart';
 import '../../models/shared/notification_model.dart';
 
 class NotificationController extends ChangeNotifier {
-  final UserRole? role;
-  NotificationController({this.role});
+  UserRole? _role;
+  NotificationController({UserRole? role}) : _role = role;
+
+  set role(UserRole? value) {
+    if (_role != value) {
+      _role = value;
+      notifyListeners();
+    }
+  }
+
+  UserRole? get role => _role;
 
   final ApiClient _apiClient = ApiClient();
   List<NotificationModel> _notifications = [];
@@ -47,7 +56,7 @@ class NotificationController extends ChangeNotifier {
       case UserRole.freelancer:
         return ApiEndpoints.freelanceNotifications;
       default:
-        return ApiEndpoints.notifications;
+        return ApiEndpoints.freelanceNotifications;
     }
   }
 
@@ -60,7 +69,7 @@ class NotificationController extends ChangeNotifier {
       case UserRole.freelancer:
         return ApiEndpoints.freelanceNotificationRead(id);
       default:
-        return ApiEndpoints.notificationRead(id);
+        return ApiEndpoints.freelanceNotificationRead(id);
     }
   }
 
@@ -73,7 +82,7 @@ class NotificationController extends ChangeNotifier {
       case UserRole.freelancer:
         return ApiEndpoints.freelanceNotificationDelete(id);
       default:
-        return ApiEndpoints.notificationDelete(id);
+        return ApiEndpoints.freelanceNotificationDelete(id);
     }
   }
 
@@ -81,6 +90,17 @@ class NotificationController extends ChangeNotifier {
     dev.log('[NotificationController] fetchNotifications() started');
     _setLoading(true);
     _setError(null);
+
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      _notifications = [
+        NotificationModel(id: 1, title: 'Bienvenue !', body: 'Bienvenue sur la plateforme Freelance Expert.', type: NotificationType.system, isRead: false, createdAt: DateTime.now()),
+        NotificationModel(id: 2, title: 'Profil validé', body: 'Votre profil a été vérifié avec succès.', type: NotificationType.missionValidated, isRead: true, createdAt: DateTime.now().subtract(const Duration(hours: 2))),
+      ];
+      _setLoading(false);
+      notifyListeners();
+      return;
+    }
 
     final response = await _apiClient.get<List<NotificationModel>>(
       endpoint: _notificationsEndpoint,
@@ -200,5 +220,44 @@ class NotificationController extends ChangeNotifier {
     dev.log(
       '[NotificationController] deleteNotification API response: success=${response.isSuccess}',
     );
+  }
+
+  // ─── BROADCASTS (Admin) ────────────────────────────────────────────────
+  List<NotificationModel> _broadcasts = [];
+  List<NotificationModel> get broadcasts => _broadcasts;
+
+  /// Récupère l'historique des notifications broadcast (Admin uniquement)
+  Future<void> fetchBroadcasts() async {
+    dev.log('[NotificationController] fetchBroadcasts() started');
+    _setLoading(true);
+    _setError(null);
+
+    final response = await _apiClient.get<List<NotificationModel>>(
+      endpoint: ApiEndpoints.adminNotificationsBroadcast,
+      parser: (json) {
+        if (json is List) {
+          return json
+              .map((item) => NotificationModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+        return [];
+      },
+    );
+
+    _setLoading(false);
+
+    if (response.isSuccess && response.data != null) {
+      _broadcasts = response.data!;
+      dev.log(
+        '[NotificationController] fetchBroadcasts SUCCESS - ${_broadcasts.length} broadcasts.',
+      );
+    } else {
+      dev.log(
+        '[NotificationController] fetchBroadcasts FAILED: ${response.message}',
+      );
+      _broadcasts = [];
+    }
+
+    notifyListeners();
   }
 }

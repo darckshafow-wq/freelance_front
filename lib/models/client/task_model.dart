@@ -71,7 +71,8 @@ class TaskModel {
           : null,
       createdAt: json['createdAt'] != null || json['created_at'] != null
           ? DateTime.tryParse(
-              (json['createdAt'] ?? json['created_at']).toString())
+              (json['createdAt'] ?? json['created_at']).toString(),
+            )
           : null,
     );
   }

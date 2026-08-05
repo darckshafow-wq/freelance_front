@@ -1,12 +1,15 @@
-import 'dart:developer' as dev;
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
+import '../../../desktop/auth/desktop_auth_wrapper.dart';
 import 'forget_password_page.dart';
 import 'verification_page.dart';
 import '../creation/role_selection_page.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../models/auth/user_model.dart';
+import '../../../../routes/admin_routes.dart';
+import '../../../../utils/ui/ui_utils.dart';
+import '../../onbor/landing_transition_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,8 +21,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  String? _errorMessage;
 
   @override
   void dispose() {
@@ -30,270 +31,278 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0F172A), AppColors.primary, AppColors.secondary],
+    final bool isDesktop = MediaQuery.of(context).size.width > 800;
+    final authController = context.watch<AuthController>();
+
+    Widget content = Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.black,
+            size: 20,
           ),
+          onPressed: () => Navigator.pop(context),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.16),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Connexion',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Accédez à votre espace en quelques secondes.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 15,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_errorMessage != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.redAccent.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.redAccent),
-                        ),
-                      ),
-                    TextField(
-                      controller: _emailController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        prefixIcon: const Icon(
-                          Icons.email_outlined,
-                          color: Colors.white70,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Mot de passe',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        prefixIcon: const Icon(
-                          Icons.lock_outline,
-                          color: Colors.white70,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ForgetPasswordPage(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Mot de passe oublié ?',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () async {
-                                setState(() {
-                                  _isLoading = true;
-                                  _errorMessage = null;
-                                });
-
-                                // Import the AuthController & UserModel if not imported at top
-                                // We'll add imports at the top
-                                final authController = AuthController();
-                                dev.log(
-                                  '[LoginPage] login() start email=${_emailController.text}',
-                                );
-                                final success = await authController.login(
-                                  _emailController.text,
-                                  _passwordController.text,
-                                );
-                                dev.log(
-                                  '[LoginPage] login() result success=$success error=${authController.errorMessage}',
-                                );
-
-                                if (!context.mounted) return;
-
-                                if (success) {
-                                  final user = authController.currentUser;
-                                  final role = user?.role;
-
-                                  // DEBUG
-                                  print("=== DEBUG LOGIN ===");
-                                  print("User email: ${user?.email}");
-                                  print("User role: $role");
-                                  print(
-                                    "Raw flags - isAdmin: ${user?.isAdmin}, isClient: ${user?.isClient}, isFreel: ${user?.isFreelancer}",
-                                  );
-                                  print("=====================");
-
-                                  if (user != null && !user.isVerified) {
-                                    dev.log(
-                                      '[LoginPage] User requires OTP verification role=${user.role} email=${user.email}',
-                                    );
-                                    // Demande de l'OTP
-                                    final otpSent = await authController
-                                        .sendOtp(user.email);
-                                    dev.log(
-                                      '[LoginPage] sendOtp() result otpSent=$otpSent error=${authController.errorMessage}',
-                                    );
-                                    if (!context.mounted) return;
-
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => VerificationPage(
-                                          email: user.email,
-                                          authController: authController,
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  if (role == UserRole.client) {
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/client/home',
-                                      (route) => false,
-                                      arguments: authController,
-                                    );
-                                  } else if (role == UserRole.freelancer) {
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/freelance/home',
-                                      (route) => false,
-                                      arguments: authController,
-                                    );
-                                  } else {
-                                    // Admin or other
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/dashboard', // Adjust if you have an admin home
-                                      (route) => false,
-                                      arguments: authController,
-                                    );
-                                  }
-                                } else {
-                                  setState(() {
-                                    _isLoading = false;
-                                    _errorMessage =
-                                        authController.errorMessage ??
-                                        'Erreur de connexion';
-                                  });
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Se connecter'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RoleSelectionPage(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Créer un compte',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              const Text(
+                'Bon retour !',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                  letterSpacing: -1,
                 ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                'Connectez-vous pour continuer à gérer vos missions.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              if (authController.errorMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  margin: const EdgeInsets.only(bottom: 25),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Colors.redAccent,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          authController.errorMessage!,
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              _buildTextField(
+                controller: _emailController,
+                label: 'Adresse Email',
+                hint: 'votre@email.com',
+                icon: Icons.email_rounded,
+              ),
+              const SizedBox(height: 20),
+              _buildTextField(
+                controller: _passwordController,
+                label: 'Mot de passe',
+                hint: '••••••••',
+                icon: Icons.lock_rounded,
+                isPassword: true,
+              ),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ForgetPasswordPage(),
+                    ),
+                  ),
+                  child: const Text(
+                    'Mot de passe oublié ?',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              SizedBox(
+                width: double.infinity,
+                height: 65,
+                child: ElevatedButton(
+                  onPressed: authController.isLoading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: authController.isLoading
+                      ? const CircularProgressIndicator(
+                          color: AppColors.primary,
+                        )
+                      : const Text(
+                          'Se connecter',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 40),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Pas encore de compte ? ',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RoleSelectionPage(),
+                      ),
+                    ),
+                    child: const Text(
+                      'S\'inscrire',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+            ],
           ),
         ),
       ),
     );
+
+    if (isDesktop) {
+      return DesktopAuthWrapper(
+        title: 'Heureux de vous revoir !',
+        subtitle:
+            'Connectez-vous à votre espace personnel et accédez à vos opportunités freelance.',
+        child: content,
+      );
+    }
+    return content;
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87, // Label plus foncé
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: controller,
+          obscureText: isPassword,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            color: Colors.black, // Texte écrit en noir pour être visible
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: Colors.grey[500], // Hint text plus visible (était 300)
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: Icon(icon, color: Colors.black87, size: 22),
+            filled: true,
+            fillColor: Colors.grey[50],
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 20,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide(color: Colors.grey[200]!, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _login() async {
+    final authController = context.read<AuthController>();
+    final success = await authController.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      final user = authController.currentUser;
+      if (user != null && !user.isVerified) {
+        await authController.sendOtp(user.email);
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerificationPage(
+              email: user.email,
+            ),
+          ),
+        );
+        return;
+      }
+
+      final role = user?.role ?? UserRole.client;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        resolveRedirectRoute(role),
+        (route) => false,
+      );
+    }
   }
 }

@@ -29,6 +29,17 @@ class TaskController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
 
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      _tasks = [
+        TaskModel(id: 1, title: 'Création de Logo Premium', description: 'Besoin d\'un logo moderne pour une startup tech.', budget: 150000, status: TaskStatus.pending, clientId: 1, createdAt: DateTime.now()),
+        TaskModel(id: 2, title: 'Développement App Mobile', description: 'Application de livraison de repas avec Flutter.', budget: 850000, status: TaskStatus.validated, clientId: 1, createdAt: DateTime.now().subtract(const Duration(days: 2))),
+        TaskModel(id: 3, title: 'Audit Sécurité Web', description: 'Vérification des vulnérabilités d\'un site e-commerce.', budget: 300000, status: TaskStatus.executed, clientId: 1, createdAt: DateTime.now().subtract(const Duration(days: 5))),
+      ];
+      _setLoading(false);
+      return;
+    }
+
     final response = await _apiClient.get<List<TaskModel>>(
       endpoint: ApiEndpoints.clientTasks,
       parser: (json) {

@@ -6,6 +6,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 
+// Vues Admin Desktop
+import '../views/desktop/admin/dashboard/dashboard.dart';
+import '../views/desktop/admin/tasks/task_detail.dart';
+import '../views/desktop/admin/users/user_detail.dart';
+import '../views/desktop/admin/users/user_list.dart';
+import '../views/desktop/admin/tasks/task_list.dart';
+import '../views/desktop/admin/profile/admin_profile.dart';
+import '../views/desktop/admin/notification/admin_notification.dart';
+import '../views/desktop/admin/messages/admin_messages.dart';
+import '../views/desktop/admin/feedback/liste_feedback.dart';
+import '../views/desktop/admin/feedback/detail_feedback.dart';
+import '../views/desktop/admin/feedback/response_feedback.dart';
+import '../views/desktop/admin/audit/admin_audit_page.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes des noms de routes Admin
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +37,30 @@ class AdminRouteNames {
 
   /// Détail d'un utilisateur — attend un [int] (userId) en argument
   static const String userDetail = '/admin/users/detail';
+
+  /// Détail d'une mission — attend un [int] (taskId) en argument
+  static const String taskDetail = '/admin/tasks/detail';
+
+  /// Profil de l'admin
+  static const String profile = '/admin/profile';
+
+  /// Notifications admin
+  static const String notifications = '/admin/notifications';
+
+  /// Messages admin
+  static const String messages = '/admin/messages';
+
+  /// Liste des feedbacks
+  static const String feedbackList = '/admin/feedback';
+
+  /// Journal d'audit admin
+  static const String auditLogs = '/admin/audit';
+
+  /// Détail d'un feedback — attend un [int] (feedbackId) en argument
+  static const String feedbackDetail = '/admin/feedback/detail';
+
+  /// Réponse à un feedback — attend un [int] (feedbackId) en argument
+  static const String feedbackReply = '/admin/feedback/reply';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,36 +74,100 @@ class AdminRoutes {
   /// Retourne une [Route] si [settings.name] est une route admin connue,
   /// sinon retourne `null` pour laisser le routeur parent gérer.
   static Route<dynamic>? generate(RouteSettings settings) {
+    // Debug log pour voir quel nom de route arrive ici
+    debugPrint('[AdminRoutes] generate() name=${settings.name}');
+
     switch (settings.name) {
       // ── Tableau de bord Admin ─────────────────────────────────────────────
       case AdminRouteNames.dashboard:
         return _guardRoute(
           settings: settings,
-          builder: () => const _AdminDashboardPlaceholder(),
+          builder: () => const AdminDashboard(),
         );
 
-      // ── Gestion Utilisateurs ──────────────────────────────────────────────
+      // ── Gestion Utilisateurs / Liste ──────────────────────────────────────
       case AdminRouteNames.users:
         return _guardRoute(
           settings: settings,
-          builder: () => const _AdminPlaceholder(title: 'Gestion Utilisateurs'),
+          builder: () => const AdminUserList(),
         );
 
-      // ── Détail Utilisateur ────────────────────────────────────────────────
+      // ── Gestion Utilisateurs / Détail ─────────────────────────────────────
       case AdminRouteNames.userDetail:
-        final userId = settings.arguments as int?;
+        final args = settings.arguments;
+        final int userId = (args is int) ? args : 0;
         return _guardRoute(
           settings: settings,
-          builder: () => _AdminPlaceholder(
-            title: 'Détail Utilisateur ${userId != null ? '(#$userId)' : ''}',
-          ),
+          builder: () => AdminUserDetail(userId: userId),
         );
 
-      // ── Gestion Missions ──────────────────────────────────────────────────
+      // ── Gestion Missions / Liste ──────────────────────────────────────────
       case AdminRouteNames.tasks:
         return _guardRoute(
           settings: settings,
-          builder: () => const _AdminPlaceholder(title: 'Gestion Missions'),
+          builder: () => const AdminTaskList(),
+        );
+
+      // ── Gestion Missions / Détail ─────────────────────────────────────────
+      case AdminRouteNames.taskDetail:
+        final args = settings.arguments;
+        final int taskId = (args is int) ? args : 0;
+        return _guardRoute(
+          settings: settings,
+          builder: () => AdminTaskDetail(taskId: taskId),
+        );
+
+      // ── Profil Admin ──────────────────────────────────────────────────────
+      case AdminRouteNames.profile:
+        return _guardRoute(
+          settings: settings,
+          builder: () => const AdminProfile(),
+        );
+
+      // ── Notifications Admin ───────────────────────────────────────────────
+      case AdminRouteNames.notifications:
+        return _guardRoute(
+          settings: settings,
+          builder: () => const AdminNotification(),
+        );
+
+      // ── Messages Admin ────────────────────────────────────────────────────
+      case AdminRouteNames.messages:
+        return _guardRoute(
+          settings: settings,
+          builder: () => const AdminMessages(),
+        );
+
+      // ── Feedbacks Admin / Liste ───────────────────────────────────────────
+      case AdminRouteNames.feedbackList:
+        return _guardRoute(
+          settings: settings,
+          builder: () => const AdminFeedbackList(),
+        );
+
+      // ── Audit logs Admin ────────────────────────────────────────────────
+      case AdminRouteNames.auditLogs:
+        return _guardRoute(
+          settings: settings,
+          builder: () => const AdminAuditPage(),
+        );
+
+      // ── Feedbacks Admin / Détail ──────────────────────────────────────────
+      case AdminRouteNames.feedbackDetail:
+        final args = settings.arguments;
+        final int feedbackId = (args is int) ? args : 0;
+        return _guardRoute(
+          settings: settings,
+          builder: () => AdminFeedbackDetail(feedbackId: feedbackId),
+        );
+
+      // ── Feedbacks Admin / Réponse ─────────────────────────────────────────
+      case AdminRouteNames.feedbackReply:
+        final args = settings.arguments;
+        final int feedbackId = (args is int) ? args : 0;
+        return _guardRoute(
+          settings: settings,
+          builder: () => AdminFeedbackReply(feedbackId: feedbackId),
         );
 
       default:
@@ -78,80 +180,6 @@ class AdminRoutes {
     required RouteSettings settings,
     required Widget Function() builder,
   }) {
-    // TODO : Réactiver la vérification du token et du rôle admin en production.
-    // Exemple :
-    //   if (ApiClient.currentToken == null) {
-    //     return MaterialPageRoute(builder: (_) => const LoginPage());
-    //   }
-    //   final role = /* récupérer le rôle depuis le store */;
-    //   if (role != UserRole.admin) {
-    //     return MaterialPageRoute(
-    //       builder: (_) => const _AccessDeniedPage(reason: 'Réservé aux administrateurs'),
-    //     );
-    //   }
     return MaterialPageRoute(builder: (_) => builder(), settings: settings);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Widgets temporaires (placeholders) — à remplacer par les vraies vues admin
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AdminDashboardPlaceholder extends StatelessWidget {
-  const _AdminDashboardPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard Admin'),
-        backgroundColor: const Color(0xFF2D2D2D),
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.admin_panel_settings_outlined,
-              size: 64,
-              color: Color(0xFFFFB000),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Tableau de bord Admin',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Vue en cours de développement',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AdminPlaceholder extends StatelessWidget {
-  final String title;
-  const _AdminPlaceholder({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: const Color(0xFF2D2D2D),
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Text(
-          '$title — En développement',
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      ),
-    );
   }
 }

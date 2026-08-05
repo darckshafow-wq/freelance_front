@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
@@ -7,36 +8,27 @@ import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/main_layout.dart';
 
 class DashboardView extends StatefulWidget {
-  final AuthController authController;
-
-  const DashboardView({super.key, required this.authController});
+  const DashboardView({super.key});
 
   @override
   State<DashboardView> createState() => _DashboardViewState();
 }
 
 class _DashboardViewState extends State<DashboardView> {
-  final TaskController _taskController = TaskController();
 
   @override
   void initState() {
     super.initState();
-    _taskController.addListener(_onTaskStateChanged);
-    
+
     // Fetch tasks on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _taskController.fetchTasks();
+      context.read<TaskController>().fetchTasks();
     });
   }
 
   @override
   void dispose() {
-    _taskController.removeListener(_onTaskStateChanged);
     super.dispose();
-  }
-
-  void _onTaskStateChanged() {
-    if (mounted) setState(() {});
   }
 
   Color _getStatusColor(TaskStatus status) {
@@ -64,16 +56,19 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final user = widget.authController.currentUser;
+    final authController = context.watch<AuthController>();
+    final taskController = context.watch<TaskController>();
+    
+    final user = authController.currentUser;
     final userName = user?.fullName ?? 'Utilisateur';
     final userRole = user?.role.name.toUpperCase() ?? 'FREELANCE';
 
     return MainLayout(
       title: 'Tableau de Bord',
-      authController: widget.authController,
+      authController: authController,
       currentRoute: '/dashboard',
       body: RefreshIndicator(
-        onRefresh: () => _taskController.fetchTasks(),
+        onRefresh: () => taskController.fetchTasks(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20.0),
@@ -88,7 +83,9 @@ class _DashboardViewState extends State<DashboardView> {
                     children: [
                       CircleAvatar(
                         radius: 30,
-                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.1,
+                        ),
                         child: Text(
                           userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
                           style: TextStyle(
@@ -111,9 +108,14 @@ class _DashboardViewState extends State<DashboardView> {
                             ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -145,7 +147,7 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: () => _taskController.fetchTasks(),
+                    onPressed: () => taskController.fetchTasks(),
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Actualiser'),
                   ),
@@ -154,12 +156,14 @@ class _DashboardViewState extends State<DashboardView> {
               const SizedBox(height: 12),
 
               // Task List State Handling
-              if (_taskController.isLoading)
+              if (taskController.isLoading)
                 const SizedBox(
                   height: 200,
-                  child: LoadingIndicator(message: 'Chargement des missions...'),
+                  child: LoadingIndicator(
+                    message: 'Chargement des missions...',
+                  ),
                 )
-              else if (_taskController.errorMessage != null)
+              else if (taskController.errorMessage != null)
                 Card(
                   color: theme.colorScheme.error.withValues(alpha: 0.05),
                   child: Padding(
@@ -167,25 +171,29 @@ class _DashboardViewState extends State<DashboardView> {
                     child: Column(
                       children: [
                         Text(
-                          _taskController.errorMessage!,
+                          taskController.errorMessage!,
                           textAlign: TextAlign.center,
                           style: TextStyle(color: theme.colorScheme.error),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
-                          onPressed: () => _taskController.fetchTasks(),
+                          onPressed: () => taskController.fetchTasks(),
                           child: const Text('Réessayer'),
                         ),
                       ],
                     ),
                   ),
                 )
-              else if (_taskController.tasks.isEmpty)
+              else if (taskController.tasks.isEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 40),
                   child: Column(
                     children: [
-                      Icon(Icons.assignment_late_outlined, size: 48, color: theme.disabledColor),
+                      Icon(
+                        Icons.assignment_late_outlined,
+                        size: 48,
+                        color: theme.disabledColor,
+                      ),
                       const SizedBox(height: 12),
                       const Text(
                         'Aucune mission trouvée pour le moment.',
@@ -199,11 +207,11 @@ class _DashboardViewState extends State<DashboardView> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _taskController.tasks.length,
+                  itemCount: taskController.tasks.length,
                   itemBuilder: (context, index) {
-                    final task = _taskController.tasks[index];
+                    final task = taskController.tasks[index];
                     final statusColor = _getStatusColor(task.status);
-                    
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: InkWell(
@@ -217,18 +225,23 @@ class _DashboardViewState extends State<DashboardView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text(
                                       task.title,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: statusColor.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(6),
@@ -250,16 +263,23 @@ class _DashboardViewState extends State<DashboardView> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 16),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.payments_outlined, size: 18, color: theme.colorScheme.primary),
+                                      Icon(
+                                        Icons.payments_outlined,
+                                        size: 18,
+                                        color: theme.colorScheme.primary,
+                                      ),
                                       const SizedBox(width: 6),
                                       Text(
                                         '${task.budget.toStringAsFixed(0)} €',

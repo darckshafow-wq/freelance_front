@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../models/auth/user_model.dart';
 import '../../../../models/freelance/freelance_stats_model.dart';
@@ -17,6 +18,7 @@ import '../../../../models/freelance/application_model.dart';
 import '../../../../models/shared/review_model.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/freelance/profil_controller.dart';
+import '../../shared/feedback/my_feedbacks_page.dart';
 
 class FreelanceProfilePage extends StatefulWidget {
   final String userId;
@@ -33,109 +35,147 @@ class FreelanceProfilePage extends StatefulWidget {
 }
 
 class _FreelanceProfilePageState extends State<FreelanceProfilePage> {
-  final ProfilController _controller = ProfilController();
-
-  late Future<(UserModel?, FreelanceStatsModel)> _profileFuture;
+  UserModel? _user;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthController>();
+      final profilController = context.read<ProfilController>();
 
-    final currentUserId = ProfilController.resolveUserId(
-      widget.userId,
-      currentUserId: widget.authController?.currentUser?.id,
-    );
+      final currentUserId = ProfilController.resolveUserId(
+        widget.userId,
+        currentUserId: auth.currentUser?.id,
+      );
 
-    final resolvedUserId =
-        currentUserId ?? widget.authController?.currentUser?.id;
+      final resolvedUserId = currentUserId ?? auth.currentUser?.id ?? 0;
 
-    _profileFuture =
-        Future.wait([
-          _controller.getUserInfo(resolvedUserId ?? 0),
-          _controller.loadFullProfile(userId: resolvedUserId ?? 0),
-        ]).then(
-          (results) =>
-              (results[0] as UserModel?, results[1] as FreelanceStatsModel),
-        );
+      if (resolvedUserId > 0) {
+        final user = await profilController.getUserInfo(resolvedUserId);
+        if (mounted) setState(() => _user = user);
+        await profilController.loadFullProfile(userId: resolvedUserId);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final profilController = context.watch<ProfilController>();
+    final stats = profilController.stats;
+
+    if (profilController.isLoading && stats.applications.isEmpty && stats.reviews.isEmpty) {
+      return const _LoadingView();
+    }
+
+    if (_user == null && stats.applications.isEmpty && stats.reviews.isEmpty) {
+      return const _EmptyProfileView();
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFFDFBF7),
-      body: FutureBuilder<(UserModel?, FreelanceStatsModel)>(
-        future: _profileFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const _LoadingView();
-          }
+      body: CustomScrollView(
+        slivers: [
+          // ── AppBar avec avatar et infos de base ──────────────────────
+          _ProfileSliverAppBar(user: _user),
 
-          if (snapshot.hasError) {
-            return _ErrorView(error: snapshot.error.toString());
-          }
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Statistiques chiffrées ────────────────────────────
+                  _StatsGrid(stats: stats),
+                  const SizedBox(height: 24),
 
-          final user = snapshot.data?.$1;
-          final stats = snapshot.data?.$2 ?? FreelanceStatsModel.empty();
+                  // ── Informations personnelles ─────────────────────────
+                  if (_user != null) ...[
+                    const _SectionTitle(
+                      icon: Icons.person_outline_rounded,
+                      title: 'Informations',
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoCard(user: _user!),
+                    const SizedBox(height: 24),
+                  ],
 
-          if (user == null &&
-              stats.applications.isEmpty &&
-              stats.reviews.isEmpty) {
-            return const _EmptyProfileView();
-          }
-
-          return CustomScrollView(
-            slivers: [
-              // ── AppBar avec avatar et infos de base ──────────────────────
-              _ProfileSliverAppBar(user: user),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Statistiques chiffrées ────────────────────────────
-                      _StatsGrid(stats: stats),
-                      const SizedBox(height: 24),
-
-                      // ── Informations personnelles ─────────────────────────
-                      if (user != null) ...[
-                        _SectionTitle(
-                          icon: Icons.person_outline_rounded,
-                          title: 'Informations',
-                        ),
-                        const SizedBox(height: 12),
-                        _InfoCard(user: user),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // ── Candidatures ──────────────────────────────────────
-                      _SectionTitle(
-                        icon: Icons.send_outlined,
-                        title: 'Candidatures (${stats.applications.length})',
-                      ),
-                      const SizedBox(height: 12),
-                      _ApplicationsList(applications: stats.applications),
-                      const SizedBox(height: 24),
-
-                      // ── Avis & Commentaires ───────────────────────────────
-                      _SectionTitle(
-                        icon: Icons.star_outline_rounded,
-                        title: 'Avis reçus (${stats.reviews.length})',
-                        trailing: stats.reviews.isNotEmpty
-                            ? _RatingBadge(rating: stats.averageRating)
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      _ReviewsList(reviews: stats.reviews),
-                      const SizedBox(height: 32),
-                    ],
+                  // ── Candidatures ──────────────────────────────────────
+                  _SectionTitle(
+                    icon: Icons.send_outlined,
+                    title: 'Candidatures (${stats.applications.length})',
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  _ApplicationsList(applications: stats.applications),
+                  const SizedBox(height: 24),
+
+                  // ── Avis & Commentaires ───────────────────────────────
+                  _SectionTitle(
+                    icon: Icons.star_outline_rounded,
+                    title: 'Avis reçus (${stats.reviews.length})',
+                    trailing: stats.reviews.isNotEmpty
+                        ? _RatingBadge(rating: stats.averageRating)
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _ReviewsList(reviews: stats.reviews),
+                  const SizedBox(height: 32),
+
+                  // ── Support / Feedback ───────────────────────────────
+                  const _SectionTitle(
+                    icon: Icons.feedback_outlined,
+                    title: 'Support / Signalements',
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyFeedbacksPage(
+                            authController: context.read<AuthController>(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.help_outline_rounded, color: Colors.grey),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Signaler un problème ou faire une suggestion',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2D2D2D),
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -511,6 +551,8 @@ class _ApplicationTile extends StatelessWidget {
         return const Color(0xFF22C55E);
       case ApplicationStatus.rejected:
         return const Color(0xFFEF4444);
+      case ApplicationStatus.interview:
+        return const Color(0xFF7C3AED); // Violet
       case ApplicationStatus.pending:
         return const Color(0xFFF59E0B);
     }
@@ -519,9 +561,11 @@ class _ApplicationTile extends StatelessWidget {
   String get _statusLabel {
     switch (application.status) {
       case ApplicationStatus.accepted:
-        return 'Acceptée';
+        return 'Attribuée';
       case ApplicationStatus.rejected:
-        return 'Refusée';
+        return 'Non retenue';
+      case ApplicationStatus.interview:
+        return 'Entretien';
       case ApplicationStatus.pending:
         return 'En attente';
     }
@@ -533,6 +577,8 @@ class _ApplicationTile extends StatelessWidget {
         return Icons.check_circle_rounded;
       case ApplicationStatus.rejected:
         return Icons.cancel_rounded;
+      case ApplicationStatus.interview:
+        return Icons.chat_bubble_rounded; // Icône entretien
       case ApplicationStatus.pending:
         return Icons.pending_rounded;
     }
@@ -875,53 +921,4 @@ class _LoadingView extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Vue d'erreur
-// ─────────────────────────────────────────────────────────────────────────────
-class _ErrorView extends StatelessWidget {
-  final String error;
-  const _ErrorView({required this.error});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 56,
-                color: Color(0xFFEF4444),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Impossible de charger le profil',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                error,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Retour'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

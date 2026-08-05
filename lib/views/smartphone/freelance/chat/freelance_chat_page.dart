@@ -1,52 +1,25 @@
-import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
-import '../../../../services/api/api_core.dart';
-import '../../../../services/api/api_endpoints.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
+import '../../../../controllers/shared/chat_controller.dart';
+import '../../../../models/shared/message_model.dart';
+import '../../../../models/freelance/application_model.dart';
+import '../../../../utils/ui/ui_utils.dart';
 
-// ─── Modèle léger pour un message ────────────────────────────────────────────
-class _MessageModel {
-  final int id;
-  final String content;
-  final int senderId;
-  final int receiverId;
-  final int? taskId;
-  final DateTime timestamp;
-
-  _MessageModel({
-    required this.id,
-    required this.content,
-    required this.senderId,
-    required this.receiverId,
-    this.taskId,
-    required this.timestamp,
-  });
-
-  factory _MessageModel.fromJson(Map<String, dynamic> json) {
-    return _MessageModel(
-      id: json['id'] as int? ?? 0,
-      content: (json['content'] ?? json['message'] ?? '').toString(),
-      senderId: json['sender_id'] as int? ?? 0,
-      receiverId: json['receiver_id'] as int? ?? 0,
-      taskId: json['task_id'] as int?,
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-    );
-  }
-}
-
-// ─── Page de chat active ──────────────────────────────────────────────────────
 class FreelanceChatPage extends StatefulWidget {
   final int otherUserId;
   final String? otherUserName;
-  final int? taskId;
+  final int taskId;
+  final int applicationId;
+  final String? initialStatus;
 
   const FreelanceChatPage({
     super.key,
     this.otherUserId = 0,
     this.otherUserName,
-    this.taskId,
+    required this.taskId,
+    this.applicationId = 0,
+    this.initialStatus,
   });
 
   @override
@@ -54,16 +27,11 @@ class FreelanceChatPage extends StatefulWidget {
 }
 
 class _FreelanceChatPageState extends State<FreelanceChatPage> {
-  final ApiClient _apiClient = ApiClient();
+  final ChatController _chatController = ChatController();
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
-  List<_MessageModel> _messages = [];
-  bool _isLoading = true;
-  bool _isSending = false;
-  String? _error;
-
-  int _currentUserId = 1;
+  
+  ApplicationStatus? _currentStatus;
 
   static const Color _kAmber = Color(0xFFFFB000);
   static const Color _kBg = Color(0xFFFDFBF7);
@@ -71,127 +39,26 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
   @override
   void initState() {
     super.initState();
-    _init();
+    if (widget.initialStatus != null) {
+      _currentStatus = ApplicationStatus.fromString(widget.initialStatus!);
+    }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _chatController.init(
+          otherUserId: widget.otherUserId,
+          taskId: widget.taskId,
+          isClient: false,
+        );
+      _scrollToBottom();
+    });
   }
 
   @override
   void dispose() {
+    _chatController.dispose();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _init() async {
-    await _resolveCurrentUser();
-    await _fetchMessages();
-  }
-
-  /// METHODE : _resolveCurrentUser()
-  /// ENDPOINT APPELÉ : ApiEndpoints.me (".../api/v1/users/me")
-  Future<void> _resolveCurrentUser() async {
-    try {
-      final resp = await _apiClient.get<Map<String, dynamic>>(
-        endpoint: ApiEndpoints.me,
-        parser: (json) => json as Map<String, dynamic>,
-      );
-      if (resp.isSuccess && resp.data != null) {
-        setState(() {
-          _currentUserId = resp.data!['id'] as int? ?? 0;
-        });
-        dev.log('[FreelanceChatPage] currentUserId résolu : $_currentUserId');
-      }
-    } catch (e) {
-      dev.log('Erreur lors de la résolution de l\'utilisateur courant : $e');
-    }
-  }
-
-  /// METHODE : _fetchMessages()
-  /// ENDPOINT APPELÉ : GET /api/v1/messages/{other_user_id}
-  Future<void> _fetchMessages() async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-
-    if (widget.otherUserId <= 0) {
-      setState(() {
-        _isLoading = false;
-        _error = 'Aucun contact sélectionné.';
-      });
-      return;
-    }
-
-    // Ciblage direct de la route GET /api/v1/freelance/messages/{other_user_id}
-    final String targetEndpoint = ApiEndpoints.freelanceMessages(
-      widget.otherUserId,
-    );
-
-    final resp = await _apiClient.get<List<_MessageModel>>(
-      endpoint: targetEndpoint,
-      parser: (json) {
-        final list = json as List<dynamic>;
-        return list
-            .map((e) => _MessageModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-      },
-    );
-
-    if (!mounted) return;
-    if (resp.isSuccess && resp.data != null) {
-      setState(() {
-        // Renverse la liste si ton API retourne le plus récent en premier (order_by timestamp desc)
-        _messages = resp.data!.reversed.toList();
-        _isLoading = false;
-        _error = null;
-      });
-      _scrollToBottom();
-    } else {
-      setState(() {
-        _isLoading = false;
-        _error = resp.message ?? 'Erreur lors du chargement des messages.';
-      });
-    }
-  }
-
-  /// METHODE : _sendMessage()
-  /// ENDPOINT APPELÉ : POST /api/v1/messages/
-  Future<void> _sendMessage() async {
-    final text = _inputController.text.trim();
-    if (text.isEmpty || _isSending || widget.otherUserId <= 0) return;
-
-    setState(() => _isSending = true);
-    _inputController.clear();
-
-    // Structuration du corps selon le schéma Pydantic MessageCreate du backend
-    final Map<String, dynamic> requestBody = {
-      'content': text,
-      'receiver_id': widget.otherUserId,
-      'task_id': widget.taskId, // Sera envoyé ou restera null selon le cas
-    };
-
-    // Appel du POST sur la racine globale du routeur /messages/ sans injecter l'ID dans l'URL
-    final resp = await _apiClient.post<_MessageModel>(
-      endpoint: ApiEndpoints.freelanceMessagesPost,
-      body: requestBody,
-      parser: (json) => _MessageModel.fromJson(json as Map<String, dynamic>),
-    );
-
-    if (!mounted) return;
-    if (resp.isSuccess && resp.data != null) {
-      setState(() {
-        _messages.add(resp.data!);
-        _isSending = false;
-      });
-      _scrollToBottom();
-    } else {
-      setState(() => _isSending = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(resp.message ?? 'Échec de l\'envoi'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
   }
 
   void _scrollToBottom() {
@@ -206,10 +73,81 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
     });
   }
 
+  Future<void> _sendMessage() async {
+    final text = _inputController.text.trim();
+    if (text.isEmpty) return;
+
+    _inputController.clear();
+    final success = await _chatController.sendMessage(
+      text: text,
+      otherUserId: widget.otherUserId,
+      taskId: widget.taskId,
+    );
+
+    if (success) {
+      _scrollToBottom();
+    } else if (mounted) {
+      UIUtils.showError(context, _chatController.error ?? 'Échec de l\'envoi');
+    }
+  }
+
   String _formatTime(DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '$h:$m';
+  }
+
+  Widget _buildStatusHeader() {
+    if (_currentStatus == null) return const SizedBox.shrink();
+
+    String label = "";
+    Color color = Colors.grey;
+    IconData icon = Icons.info_outline_rounded;
+
+    switch (_currentStatus!) {
+      case ApplicationStatus.pending:
+        label = "Candidature en attente de lecture";
+        color = Colors.orange;
+        icon = Icons.access_time_rounded;
+        break;
+      case ApplicationStatus.interview:
+        label = "Entretien en cours avec le client";
+        color = AppColors.accent;
+        icon = Icons.chat_bubble_outline_rounded;
+        break;
+      case ApplicationStatus.accepted:
+        label = "Félicitations ! Mission attribuée";
+        color = Colors.green;
+        icon = Icons.check_circle_outline_rounded;
+        break;
+      case ApplicationStatus.rejected:
+        label = "Candidature non retenue";
+        color = Colors.redAccent;
+        icon = Icons.error_outline_rounded;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: color.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -237,188 +175,221 @@ class _FreelanceChatPageState extends State<FreelanceChatPage> {
               ),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                const Text(
-                  'En ligne',
-                  style: TextStyle(fontSize: 11, color: Colors.white70),
-                ),
-              ],
+                  const Text(
+                    'En ligne',
+                    style: TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _fetchMessages,
+            onPressed: () async {
+              await _chatController.fetchMessages(
+                otherUserId: widget.otherUserId,
+                taskId: widget.taskId,
+              );
+              _scrollToBottom();
+            },
             tooltip: 'Actualiser',
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: _kAmber))
-                : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.chat_bubble_outline,
-                            size: 48,
-                            color: Colors.redAccent,
+      body: ListenableBuilder(
+        listenable: _chatController,
+        builder: (context, child) {
+          return Column(
+            children: [
+              _buildStatusHeader(), // 👈 Bannière de statut pour le freelance
+              Expanded(
+                child: _chatController.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _kAmber),
+                      )
+                    : _chatController.error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.chat_bubble_outline,
+                                size: 48,
+                                color: Colors.redAccent,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _chatController.error!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.black45),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  await _chatController.fetchMessages(
+                                    otherUserId: widget.otherUserId,
+                                    taskId: widget.taskId,
+                                  );
+                                  _scrollToBottom();
+                                },
+                                child: const Text('Réessayer'),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _error!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.black45),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: _fetchMessages,
-                            child: const Text('Réessayer'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : _messages.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          size: 56,
-                          color: Colors.black.withValues(alpha: 0.15),
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Aucun message pour le moment.\nCommencez la conversation !',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.black38, fontSize: 14),
+                      )
+                    : _chatController.messages.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 56,
+                              color: Colors.black.withValues(alpha: 0.15),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Aucun message pour le moment.\nCommencez la conversation !',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.black38,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _messages[index];
-                      final isMe = msg.senderId == _currentUserId;
-                      return _MessageBubble(
-                        message: msg,
-                        isMe: isMe,
-                        formatTime: _formatTime,
-                      );
-                    },
-                  ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      textCapitalization: TextCapitalization.sentences,
-                      maxLines: null,
-                      decoration: InputDecoration(
-                        hintText: 'Votre message...',
-                        hintStyle: const TextStyle(color: Colors.black38),
-                        filled: true,
-                        fillColor: const Color(0xFFF5F5F5),
-                        contentPadding: const EdgeInsets.symmetric(
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 10,
+                          vertical: 12,
                         ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
+                        itemCount: _chatController.messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = _chatController.messages[index];
+                          final isMe =
+                              msg.senderId == _chatController.currentUserId;
+                          return _MessageBubble(
+                            message: msg,
+                            isMe: isMe,
+                            formatTime: _formatTime,
+                          );
+                        },
                       ),
-                      onSubmitted: (_) => _sendMessage(),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.black.withValues(alpha: 0.08),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    child: _isSending
-                        ? const SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Padding(
-                              padding: EdgeInsets.all(10),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: _kAmber,
-                              ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _inputController,
+                          textCapitalization: TextCapitalization.sentences,
+                          maxLines: null,
+                          decoration: InputDecoration(
+                            hintText: 'Votre message...',
+                            hintStyle: const TextStyle(color: Colors.black38),
+                            filled: true,
+                            fillColor: const Color(0xFFF5F5F5),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
                             ),
-                          )
-                        : GestureDetector(
-                            onTap: _sendMessage,
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                color: _kAmber,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.send_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
                             ),
                           ),
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        child: _chatController.isSending
+                            ? const SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: _kAmber,
+                                  ),
+                                ),
+                              )
+                            : GestureDetector(
+                                onTap: _sendMessage,
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: const BoxDecoration(
+                                    color: _kAmber,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.send_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-// ─── Bulle de message ─────────────────────────────────────────────────────────
 class _MessageBubble extends StatelessWidget {
-  final _MessageModel message;
+  final MessageModel message;
   final bool isMe;
   final String Function(DateTime) formatTime;
 
@@ -430,30 +401,31 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color kAmber = Color(0xFFFFB000);
-    const Color kAmberLight = Color(0xFFFFEDC1);
+    final Color bubbleColor = isMe ? const Color(0xFFFFB000) : Colors.white;
+    final Color textColor = isMe ? Colors.white : const Color(0xFF2D2D2D);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: kAmberLight,
-              child: const Icon(Icons.person, size: 18, color: kAmber),
+            Container(
+              margin: const EdgeInsets.only(bottom: 2),
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: const Icon(Icons.person, size: 16, color: AppColors.secondary),
+              ),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isMe ? kAmber : Colors.white,
+                color: bubbleColor,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -462,40 +434,47 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Column(
-                crossAxisAlignment: isMe
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
+                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
                   Text(
                     message.content,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isMe ? Colors.white : const Color(0xFF2D2D2D),
+                      color: textColor,
                       height: 1.4,
+                      fontWeight: isMe ? FontWeight.w500 : FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    formatTime(message.timestamp),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : Colors.black38,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        formatTime(message.timestamp),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: isMe ? Colors.white70 : Colors.black26,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.done_all_rounded, size: 12, color: Colors.white70),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
           ),
-          if (isMe) const SizedBox(width: 4),
+          if (isMe) const SizedBox(width: 8),
         ],
       ),
     );

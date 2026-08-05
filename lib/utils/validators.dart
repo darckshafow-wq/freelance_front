@@ -10,9 +10,7 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return 'L\'adresse email est obligatoire.';
     }
-    final emailRegExp = RegExp(
-      r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+',
-    );
+    final emailRegExp = RegExp(r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+');
     if (!emailRegExp.hasMatch(value)) {
       return 'Veuillez saisir une adresse email valide.';
     }

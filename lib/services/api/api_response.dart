@@ -6,12 +6,7 @@ class ApiResponse<T> {
   final String? message;
   final int? statusCode;
 
-  ApiResponse({
-    required this.status,
-    this.data,
-    this.message,
-    this.statusCode,
-  });
+  ApiResponse({required this.status, this.data, this.message, this.statusCode});
 
   factory ApiResponse.loading() {
     return ApiResponse(status: ApiStatus.loading);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../controllers/auth/auth_controller.dart';
@@ -10,12 +11,10 @@ import '../../../../models/auth/user_model.dart';
 
 class FreelanceHomePage extends StatefulWidget {
   final String userId;
-  final AuthController? authController;
 
   const FreelanceHomePage({
     super.key,
     required this.userId,
-    this.authController,
   });
 
   @override
@@ -23,12 +22,6 @@ class FreelanceHomePage extends StatefulWidget {
 }
 
 class _FreelanceHomePageState extends State<FreelanceHomePage> {
-  final FreelanceTaskController _taskController = FreelanceTaskController();
-  late final NotificationController _notificationController;
-
-  // Instance du contrôleur de profil
-  final ProfilController _profilController = ProfilController();
-
   // État local pour stocker les informations de l'utilisateur connecté
   UserModel? _currentUser;
   bool _isProfileLoading = true;
@@ -36,31 +29,32 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
   @override
   void initState() {
     super.initState();
-    _notificationController = NotificationController(
-      role: widget.authController?.currentUser?.role,
-    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
+      final auth = context.read<AuthController>();
+      final taskController = context.read<FreelanceTaskController>();
+      final notificationController = context.read<NotificationController>();
+      final profilController = context.read<ProfilController>();
 
+      notificationController.role = auth.currentUser?.role;
+      
       // 1. Chargement initial des tâches et notifications
-      _taskController.fetchHomeTasks();
-      _notificationController.fetchNotifications();
+      taskController.fetchHomeTasks();
+      notificationController.fetchNotifications();
 
       // 2. Résolution de l'ID utilisateur
       final currentUserId = ProfilController.resolveUserId(
         widget.userId,
-        currentUserId: widget.authController?.currentUser?.id,
+        currentUserId: auth.currentUser?.id,
       );
 
-      final resolvedUserId =
-          currentUserId ?? widget.authController?.currentUser?.id ?? 0;
+      final resolvedUserId = currentUserId ?? auth.currentUser?.id ?? 0;
 
       // 3. Récupération conforme du profil via le ProfilController
       try {
         setState(() => _isProfileLoading = true);
 
         // Récupération de l'utilisateur (getUserInfo gère le fallback si resolvedUserId <= 0)
-        final user = await _profilController.getUserInfo(resolvedUserId);
+        final user = await profilController.getUserInfo(resolvedUserId);
 
         if (mounted) {
           setState(() {
@@ -71,7 +65,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
 
         // Chargement parallèle optionnel des stats du freelance en tâche de fond si nécessaire
         if (resolvedUserId > 0) {
-          await _profilController.loadFullProfile(userId: resolvedUserId);
+          await profilController.loadFullProfile(userId: resolvedUserId);
         }
       } catch (e) {
         debugPrint("[Home] Erreur de récupération du profil : $e");
@@ -83,16 +77,11 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
   }
 
   @override
-  void dispose() {
-    // Note : Le ProfilController n'a pas de méthode dispose() définie,
-    // on ne libère donc que les contrôleurs qui en ont besoin.
-    _taskController.dispose();
-    _notificationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final authController = context.watch<AuthController>();
+    final taskController = context.watch<FreelanceTaskController>();
+    final notificationController = context.watch<NotificationController>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFDFBF7),
       appBar: AppBar(
@@ -113,27 +102,22 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
               await Navigator.pushNamed(
                 context,
                 AppRoutes.notifications,
-                arguments: widget.authController,
+                arguments: authController,
               );
             },
-            icon: AnimatedBuilder(
-              animation: _notificationController,
-              builder: (context, _) {
-                return Badge(
-                  isLabelVisible: _notificationController.unreadCount > 0,
-                  label: Text(
-                    '${_notificationController.unreadCount}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                  backgroundColor: AppColors.error,
-                  child: const Icon(Icons.notifications_outlined),
-                );
-              },
+            icon: Badge(
+              isLabelVisible: notificationController.unreadCount > 0,
+              label: Text(
+                '${notificationController.unreadCount}',
+                style: const TextStyle(fontSize: 10),
+              ),
+              backgroundColor: AppColors.error,
+              child: const Icon(Icons.notifications_outlined),
             ),
           ),
         ],
       ),
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, authController),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -172,10 +156,9 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
               ),
               const SizedBox(height: 20),
 
-              ListenableBuilder(
-                listenable: _taskController,
-                builder: (context, child) {
-                  if (_taskController.isLoading) {
+              Builder(
+                builder: (context) {
+                  if (taskController.isLoading) {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(40.0),
@@ -186,14 +169,14 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                     );
                   }
 
-                  if (_taskController.errorMessage != null) {
+                  if (taskController.errorMessage != null) {
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Column(
                           children: [
                             Text(
-                              _taskController.errorMessage!,
+                              taskController.errorMessage!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.red,
@@ -202,7 +185,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                             ),
                             const SizedBox(height: 10),
                             ElevatedButton(
-                              onPressed: () => _taskController.fetchHomeTasks(),
+                              onPressed: () => taskController.fetchHomeTasks(),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFFB000),
                               ),
@@ -217,7 +200,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                     );
                   }
 
-                  if (_taskController.homeTasks.isEmpty) {
+                  if (taskController.homeTasks.isEmpty) {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(40.0),
@@ -232,11 +215,11 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _taskController.homeTasks.length,
+                    itemCount: taskController.homeTasks.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 24),
                     itemBuilder: (context, index) {
-                      final TaskModel task = _taskController.homeTasks[index];
+                      final TaskModel task = taskController.homeTasks[index];
 
                       return _MissionCard(
                         title: task.title,
@@ -288,7 +271,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
     );
   }
 
-  Drawer _buildDrawer(BuildContext context) {
+  Drawer _buildDrawer(BuildContext context, AuthController authController) {
     // Utilisation de l'état local du profil mis à jour
     final displayName = _currentUser?.fullName ?? 'Utilisateur';
     final userRoleLabel = _currentUser?.role == UserRole.client
@@ -417,7 +400,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                   onTap: () async {
                     Navigator.pop(context);
 
-                    final fallbackId = widget.authController?.currentUser?.id;
+                    final fallbackId = authController.currentUser?.id;
                     final userId = fallbackId != null && fallbackId > 0
                         ? fallbackId.toString()
                         : 'me';
@@ -427,7 +410,7 @@ class _FreelanceHomePageState extends State<FreelanceHomePage> {
                       '/freelance/profile',
                       arguments: {
                         'userId': userId,
-                        'authController': widget.authController,
+                        'authController': authController,
                       },
                     );
                   },

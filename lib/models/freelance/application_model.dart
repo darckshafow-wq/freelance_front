@@ -1,14 +1,16 @@
 enum ApplicationStatus {
   pending,
-
+  interview, // Phase de discussion avant attribution
   accepted,
-
   rejected;
 
   static ApplicationStatus fromString(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
         return ApplicationStatus.pending;
+
+      case 'interview':
+        return ApplicationStatus.interview;
 
       case 'accepted':
       case 'validated': // Gère le statut "validated" de ton JSON
@@ -62,9 +64,7 @@ class ApplicationModel {
 
     // Ton JSON utilise 'client_id' pour le créateur ou le candidat selon l'API
     final dynamic rawFreelancerId =
-        json['freelancer_id'] ??
-        json['freelancerId'] ??
-        json['freelance_id'];
+        json['freelancer_id'] ?? json['freelancerId'] ?? json['freelance_id'];
 
     final dynamic rawBudget =
         json['proposed_budget'] ??
@@ -88,7 +88,9 @@ class ApplicationModel {
               (json['createdAt'] ?? json['created_at']).toString(),
             )
           : null,
-      clientId: json['client_id'] != null ? int.tryParse(json['client_id'].toString()) : null,
+      clientId: json['client_id'] != null
+          ? int.tryParse(json['client_id'].toString())
+          : null,
     );
   }
 

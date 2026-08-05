@@ -63,7 +63,8 @@ class NotificationModel {
       // Ton back n'envoie pas de titre, on met une valeur par défaut ou on réutilise le contenu
       title: json['title'] as String? ?? 'Notification',
       // On remplace 'body' par 'content' ou 'message' qui vient du backend
-      body: (json['content'] ?? json['message'] ?? json['body'] ?? '') as String,
+      body:
+          (json['content'] ?? json['message'] ?? json['body'] ?? '') as String,
       // On remplace 'type' par 'review_type' qui vient du backend
       type: NotificationType.fromString(
         (json['review_type'] ?? json['type'] ?? 'system') as String,

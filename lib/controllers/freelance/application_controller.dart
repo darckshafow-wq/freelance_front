@@ -70,6 +70,16 @@ class ApplicationController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
 
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      _applications = [
+        ApplicationModel(id: 10, freelancerId: 1, taskId: 10, taskTitle: 'UI/UX Design - Fintech', proposedBudget: 400000, coverLetter: 'Proposition envoyée.', status: ApplicationStatus.pending, createdAt: DateTime.now()),
+      ];
+      _setLoading(false);
+      notifyListeners();
+      return;
+    }
+
     final response = await _apiClient.get<List<ApplicationModel>>(
       endpoint: ApiEndpoints
           .freelanceMyApplications, // -> /api/v1/applications/my-applications

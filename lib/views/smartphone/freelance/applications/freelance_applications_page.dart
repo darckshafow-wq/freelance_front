@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../../controllers/freelance/application_controller.dart';
 import '../../../../../models/freelance/application_model.dart';
 import '../../../../../routes/freelance_routes.dart'; // Added for navigation
+import '../../../../utils/ui/ui_utils.dart';
 
 class FreelanceApplicationsPage extends StatefulWidget {
   const FreelanceApplicationsPage({super.key});
@@ -13,18 +15,18 @@ class FreelanceApplicationsPage extends StatefulWidget {
 }
 
 class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
-  final ApplicationController _controller = ApplicationController();
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.fetchApplications();
+      context.read<ApplicationController>().fetchApplications();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final applicationController = context.watch<ApplicationController>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFDFBF7),
       appBar: AppBar(
@@ -43,16 +45,15 @@ class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () => _controller.fetchApplications(),
+            onPressed: () => applicationController.fetchApplications(),
             icon: const Icon(Icons.refresh, size: 22, color: Colors.black),
           ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, child) {
+      body: Builder(
+        builder: (context) {
           // 1. Chargement initial
-          if (_controller.isLoading && _controller.applications.isEmpty) {
+          if (applicationController.isLoading && applicationController.applications.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(
                 strokeWidth: 3,
@@ -62,8 +63,8 @@ class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
           }
 
           // 2. Erreur
-          if (_controller.errorMessage != null &&
-              _controller.applications.isEmpty) {
+          if (applicationController.errorMessage != null &&
+              applicationController.applications.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -84,7 +85,7 @@ class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      _controller.errorMessage!,
+                      applicationController.errorMessage!,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -94,7 +95,7 @@ class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
-                      onPressed: () => _controller.fetchApplications(),
+                      onPressed: () => applicationController.fetchApplications(),
                       icon: const Icon(Icons.refresh_rounded, size: 18),
                       label: const Text('Réessayer'),
                       style: ElevatedButton.styleFrom(
@@ -117,7 +118,7 @@ class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
           }
 
           // 3. Aucun résultat
-          if (_controller.applications.isEmpty) {
+          if (applicationController.applications.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -159,14 +160,14 @@ class _FreelanceApplicationsPageState extends State<FreelanceApplicationsPage> {
 
           // 4. Affichage de la liste
           return RefreshIndicator(
-            onRefresh: () => _controller.fetchApplications(),
+            onRefresh: () => applicationController.fetchApplications(),
             color: AppColors.primary,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount: _controller.applications.length,
+              itemCount: applicationController.applications.length,
               itemBuilder: (context, index) {
-                final application = _controller.applications[index];
+                final application = applicationController.applications[index];
                 return _ApplicationCard(application: application);
               },
             ),
@@ -185,11 +186,12 @@ class _ApplicationCard extends StatelessWidget {
   String _getStatusLabel(ApplicationStatus status) {
     switch (status) {
       case ApplicationStatus.accepted:
-        return 'Acceptée';
+        return 'Attribuée';
       case ApplicationStatus.rejected:
-        return 'Refusée';
+        return 'Non retenue';
+      case ApplicationStatus.interview:
+        return 'Entretien en cours';
       case ApplicationStatus.pending:
-      default:
         return 'En attente';
     }
   }
@@ -200,8 +202,9 @@ class _ApplicationCard extends StatelessWidget {
         return const Color(0xFF10B981); // Vert moderne
       case ApplicationStatus.rejected:
         return const Color(0xFFEF4444); // Rouge moderne
+      case ApplicationStatus.interview:
+        return const Color(0xFF7C3AED); // Violet — phase active
       case ApplicationStatus.pending:
-      default:
         return const Color(0xFFF59E0B); // Orange moderne
     }
   }
@@ -400,28 +403,35 @@ class _ApplicationCard extends StatelessWidget {
                     ),
                     Row(
                       children: [
-                        // Bouton d'action pour la messagerie (couleur conditionnelle)
+                        // Bouton chat : actif si INTERVIEW ou ACCEPTED
                         IconButton(
-                          onPressed: () {
-                            if (application.clientId != null && application.clientId! > 0) {
-                              Navigator.pushNamed(
-                                context,
-                                '/freelance/chat', // ou la constante appropriée, e.g. FreelanceRouteNames.chat
-                                arguments: {
-                                  'otherUserId': application.clientId,
-                                  'otherUserName': 'Client de ${application.taskTitle}',
-                                  'applicationId': application.id,
+                          onPressed: (application.status == ApplicationStatus.interview ||
+                                  application.status == ApplicationStatus.accepted)
+                              ? () {
+                                  if (application.clientId != null &&
+                                      application.clientId! > 0) {
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/freelance/chat',
+                                      arguments: {
+                                        'otherUserId': application.clientId,
+                                        'otherUserName':
+                                            'Client de ${application.taskTitle}',
+                                        'taskId': application.taskId,
+                                      },
+                                    );
+                                  }
+                                }
+                              : () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Le client doit d\'abord vous contacter pour initier l\'entretien.',
+                                      ),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
                                 },
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Impossible de contacter le client pour cette mission.'),
-                                  backgroundColor: AppColors.error,
-                                )
-                              );
-                            }
-                          },
                           icon: Icon(
                             Icons.chat_bubble_outline_rounded,
                             color:

@@ -30,6 +30,15 @@ class ClientApplicationController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
 
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      _applications = [
+        ApplicationModel(id: 10, freelancerId: 99, taskId: 1, taskTitle: 'Création de Logo Premium', proposedBudget: 140000, coverLetter: 'Expert en branding, j\'ai hâte de travailler sur ce projet.', status: ApplicationStatus.interview, createdAt: DateTime.now()),
+      ];
+      _setLoading(false);
+      return;
+    }
+
     try {
       final tasksResponse = await _apiClient.get<List<TaskModel>>(
         endpoint: ApiEndpoints.clientTasks,

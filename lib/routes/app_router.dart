@@ -15,8 +15,6 @@
 //   Navigator.pushNamed(context, ClientRouteNames.createMission, arguments: authController);
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'dart:developer' as dev;
-
 import 'package:flutter/material.dart';
 
 import '../controllers/auth/auth_controller.dart';
@@ -35,6 +33,9 @@ import '../views/smartphone/auth_smartphone/creation/create_account_page.dart';
 import '../views/smartphone/auth_smartphone/creation/role_selection_page.dart';
 import '../views/smartphone/notification/liste_notification.dart';
 import '../views/smartphone/notification/detaille_notification.dart';
+import '../views/desktop/admin/dashboard/dashboard.dart';
+import '../views/smartphone/freelance/home/freelance_home_page.dart';
+import '../views/smartphone/client/home/client_home_view.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes des routes PUBLIQUES (accessibles sans authentification)
@@ -167,9 +168,15 @@ class AppRoutes {
   static const String clientHome = ClientRouteNames.home;
   static const String clientMissions = ClientRouteNames.missions;
   static const String clientProfile = ClientRouteNames.profile;
-  static const String dashboard = ClientRouteNames.dashboard;
   static const String createMission = ClientRouteNames.createMission;
   static const String missionDetail = ClientRouteNames.missionDetail;
+
+  // Routes Admin (rétrocompatibilité)
+  static const String adminDashboard = AdminRouteNames.dashboard;
+  static const String adminUsers = AdminRouteNames.userDetail;
+  static const String adminTasks = AdminRouteNames.taskDetail;
+  static const String adminProfile = AdminRouteNames.profile;
+  static const String adminNotifications = AdminRouteNames.notifications;
 
   // ────────────────────────────────────────────────────────────────────────────
   // generateRoute — Délègue dans l'ordre :
@@ -180,9 +187,10 @@ class AppRoutes {
   //   5. Fallback 404
   // ────────────────────────────────────────────────────────────────────────────
   static Route<dynamic> generateRoute(RouteSettings settings) {
-    dev.log(
-      '[AppRoutes] generateRoute() name=${settings.name} arguments=${settings.arguments}',
+    debugPrint(
+      '[AppRoutes] generateRoute() name="${settings.name}" arguments=${settings.arguments}',
     );
+
     // ── 1. Routes Publiques ──────────────────────────────────────────────────
     switch (settings.name) {
       case AppRouteNames.landing:
@@ -211,13 +219,10 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) {
             final args = settings.arguments;
-            dev.log('[AppRoutes] verification route args=${args.runtimeType}');
             if (args is Map<String, dynamic>) {
               final email = args['email'] as String? ?? '';
-              final authController = args['authController'] as AuthController?;
               return VerificationPage(
                 email: email,
-                authController: authController,
               );
             }
             final email = settings.arguments as String? ?? '';
@@ -253,6 +258,19 @@ class AppRoutes {
           settings: settings,
         );
 
+      case '/dashboard':
+      case '/dasborde':
+      case '/dashbord':
+      case '/admin':
+      case '/admin/dashboard':
+        return MaterialPageRoute(
+          builder: (ctx) {
+            // REDIRIGER VERS CLIENT HOME POUR LES TESTS
+            return const ClientHomeView();
+          },
+          settings: settings,
+        );
+
       case AppRouteNames.notificationDetail:
         return MaterialPageRoute(
           builder: (_) => const DetailleNotificationView(),
@@ -272,6 +290,20 @@ class AppRoutes {
 
     // ── 3. Fallback : aliases legacy & routes en développement ───────────────
     switch (settings.name) {
+      case '/freelance-home':
+      case '/freelance/home':
+        return MaterialPageRoute(
+          builder: (_) => const FreelanceHomePage(userId: 'me'),
+          settings: settings,
+        );
+
+      case '/client-home':
+      case '/client/home':
+        return MaterialPageRoute(
+          builder: (_) => const ClientHomeView(),
+          settings: settings,
+        );
+
       case '/tasks':
         return MaterialPageRoute(
           builder: (_) => Scaffold(
@@ -293,41 +325,67 @@ class AppRoutes {
           ),
           settings: settings,
         );
+    }
 
-      // ── 4. Erreur 404 ───────────────────────────────────────────────────────
-      default:
-        return MaterialPageRoute(
-          builder: (ctx) => Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.map_outlined, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Page introuvable',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    // ── 4. Erreur 404 — Route inconnue ───────────────────────────────────────
+    return MaterialPageRoute(
+      builder: (ctx) => Scaffold(
+        backgroundColor: const Color(0xFFFDFBF7),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.map_outlined,
+                  size: 80,
+                  color: Color(0xFFFFB000),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Oups ! Route introuvable',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF2D2D2D),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Aucune route définie pour "${settings.name}"',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'La page "${settings.name}" n\'existe pas ou a été déplacée.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, color: Colors.black54),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
                     onPressed: () => Navigator.pushNamedAndRemoveUntil(
                       ctx,
                       AppRouteNames.landing,
                       (r) => false,
                     ),
-                    child: const Text('Retour à l\'accueil'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: const Color(0xFFFFB000),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'Retour à l\'accueil',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          settings: settings,
-        );
-    }
+        ),
+      ),
+      settings: settings,
+    );
   }
 }

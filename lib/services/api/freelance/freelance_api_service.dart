@@ -49,14 +49,14 @@ class FreelanceApiService {
   }
 
   // ── 3. Avis / Commentaires reçus ──────────────────────────────────────────
-  /// GET /api/v1/reviews/?reviewee_id={userId}
-  /// Retourne la liste des avis laissés par des clients sur ce freelance.
+  /// GET /api/v1/freelance/reviews/me
+  /// Retourne la liste des avis reçus par le freelance connecté.
   Future<ApiResponse<List<ReviewModel>>> getReviewsForFreelancer(
     int userId,
   ) async {
     dev.log('[FreelanceApiService] getReviewsForFreelancer(userId: $userId)');
-    // Le backend /reviews/ accepte un query param reviewee_id pour filtrer
-    final endpoint = '${ApiEndpoints.reviews}?reviewee_id=$userId';
+    // Route backend alignée : /users/reviews/ avec filtre reviewee_id
+    final endpoint = '${ApiEndpoints.userReviews}?reviewee_id=$userId';
     return _client.get<List<ReviewModel>>(
       endpoint: endpoint,
       parser: (json) {

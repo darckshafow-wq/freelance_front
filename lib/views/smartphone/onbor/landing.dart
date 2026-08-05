@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
+import '../../../../controllers/auth/auth_controller.dart';
+import '../../../../routes/app_router.dart';
+import 'landing_transition_page.dart';
 
 class LandingView extends StatefulWidget {
   const LandingView({super.key});
@@ -9,22 +13,37 @@ class LandingView extends StatefulWidget {
 }
 
 class _LandingViewState extends State<LandingView>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _fadeAnimation;
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreSessionAndRedirect();
+    });
+
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 1200),
     );
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeIn),
+      ),
     );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
 
     _controller.forward();
   }
@@ -35,278 +54,222 @@ class _LandingViewState extends State<LandingView>
     super.dispose();
   }
 
+  Future<void> _restoreSessionAndRedirect() async {
+    if (!mounted) return;
+
+    final authController = context.read<AuthController>();
+    await authController.restoreSession();
+
+    if (!mounted) return;
+
+    final currentUser = authController.currentUser;
+    if (currentUser != null) {
+      Navigator.pushReplacementNamed(context, resolveRedirectRoute(currentUser.role));
+    } else {
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final bool isDesktop = size.width > 800;
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0F172A),
-              AppColors.primary.withValues(alpha: 0.95),
-              AppColors.secondary.withValues(alpha: 0.95),
-              AppColors.accent.withValues(alpha: 0.9),
-            ],
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -50,
-              right: -40,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.14),
-                  boxShadow: [
-                    BoxShadow(
-                      blurRadius: 80,
-                      color: Colors.white.withValues(alpha: 0.12),
-                    ),
-                  ],
+    final authController = context.watch<AuthController>();
+    final hasRestoredSession =
+        authController.currentUser != null || authController.isLoading;
+
+    if (hasRestoredSession) {
+      return LandingTransitionPage(
+        onRestoreSession: () => authController.restoreSession(),
+        onNavigateToRoute: (routeName) {
+          Navigator.pushReplacementNamed(context, routeName);
+        },
+      );
+    }
+
+    Widget scaffold = Scaffold(
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // 1. Background Image (Top Section)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: size.height * 0.65,
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage(
+                    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndnBqZ3BqZ3BqZ3BqZ3BqZ3BqZ3BqZ3BqZ3BqZ3BqZ3BqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKP9lG0H7vVvFmU/giphy.gif',
+                  ),
+                  fit: BoxFit.cover,
                 ),
               ),
-            ),
-            Positioned(
-              bottom: -70,
-              left: -30,
               child: Container(
-                width: 180,
-                height: 180,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.accent.withValues(alpha: 0.24),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.08),
-                        end: Offset.zero,
-                      ).animate(_fadeAnimation),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: size.width * 0.9),
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-                            color: Colors.white.withValues(alpha: 0.10),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              width: 1.0,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.16),
-                                blurRadius: 24,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.16),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Freelance • Simplifié',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.1,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Text(
-                                'Bienvenue chez Freelance',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.15,
-                                      letterSpacing: -0.5,
-                                    ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Créez, trouvez et gérez vos missions dans un espace simple, clair et inspirant.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontSize: 15,
-                                  height: 1.6,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              const _HeroIllustration(),
-                              const SizedBox(height: 18),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.pushNamed(context, '/login');
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.accent,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Se connecter',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/register',
-                                        );
-                                      },
-                                      style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(
-                                          color: Colors.white,
-                                          width: 1.2,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Créer un compte',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(context, '/register');
-                                },
-                                child: const Text(
-                                  'Je n\'ai pas de compte. S\'inscrire',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.3),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+          ),
 
-class _HeroIllustration extends StatelessWidget {
-  const _HeroIllustration();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 180,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.16),
-            Colors.white.withValues(alpha: 0.08),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
-      child: Stack(
-        children: [
+          // 2. Logo and Brand Name
           Positioned(
-            right: 10,
-            top: 10,
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.accent.withValues(alpha: 0.24),
-              ),
+            top: size.height * 0.15,
+            left: 0,
+            right: 0,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    color: Colors.black,
+                    size: 45,
+                  ),
+                ),
+                const SizedBox(height: 25),
+                const Text(
+                  'FREELANCE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const Text(
+                  'Expert Platform',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
             ),
           ),
-          Positioned.fill(child: CustomPaint(painter: _DashboardPainter())),
+
+          // 3. Bottom White Container with Custom Curve
           Positioned(
-            left: 16,
-            top: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-              ),
-              child: const Text(
-                'Projet en cours',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipPath(
+              clipper: CustomCurveClipper(),
+              child: Container(
+                height: size.height * 0.45,
+                padding: const EdgeInsets.only(top: 60), // Space for the curve
+                decoration: const BoxDecoration(color: Colors.white),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'WELCOME',
+                            style: TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Find your next expert, feel at home\nWhere efficiency meets convenience',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                              height: 1.5,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const Spacer(),
+                          // Login Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, AppRouteNames.login),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    AppColors.primary, // Jaune primaire
+                                foregroundColor: Colors.black, // Texte noir
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Login',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Sign Up Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 60,
+                            child: TextButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, AppRouteNames.register),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: const BorderSide(
+                                    color: Colors.black12,
+                                    width: 1.5,
+                                  ), // Ajout d'une bordure subtile
+                                ),
+                              ),
+                              child: const Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -314,76 +277,51 @@ class _HeroIllustration extends StatelessWidget {
         ],
       ),
     );
+
+    if (isDesktop) {
+      return Scaffold(
+        backgroundColor: Colors.grey[200],
+        body: Center(
+          child: Container(
+            width: 450,
+            height: 800, // Fixed height to maintain proportions
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+              borderRadius: BorderRadius.circular(30),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: scaffold,
+          ),
+        ),
+      );
+    }
+    return scaffold;
   }
 }
 
-class _DashboardPainter extends CustomPainter {
+class CustomCurveClipper extends CustomClipper<Path> {
   @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..style = PaintingStyle.fill;
-
-    final cardPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.16)
-      ..style = PaintingStyle.fill;
-
-    final borderPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.24)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    final accentPaint = Paint()
-      ..color = AppColors.accent
-      ..style = PaintingStyle.fill;
-
-    final linePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    final dotPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.7)
-      ..style = PaintingStyle.fill;
-
-    final rect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(24, 44, size.width - 48, size.height - 66),
-      const Radius.circular(22),
-    );
-    canvas.drawRRect(rect, bgPaint);
-    canvas.drawRRect(rect, borderPaint);
-
-    final headerRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(42, 58, size.width - 84, 34),
-      const Radius.circular(12),
-    );
-    canvas.drawRRect(headerRect, cardPaint);
-
-    final smallCard = RRect.fromRectAndRadius(
-      Rect.fromLTWH(42, 110, 90, 46),
-      const Radius.circular(14),
-    );
-    canvas.drawRRect(smallCard, cardPaint);
-
-    final bigCard = RRect.fromRectAndRadius(
-      Rect.fromLTWH(144, 110, size.width - 188, 46),
-      const Radius.circular(14),
-    );
-    canvas.drawRRect(bigCard, cardPaint);
-
-    final chartPath = Path()
-      ..moveTo(156, 134)
-      ..quadraticBezierTo(176, 116, 200, 124)
-      ..quadraticBezierTo(224, 132, 248, 112)
-      ..quadraticBezierTo(270, 94, 292, 104)
-      ..quadraticBezierTo(314, 112, 340, 88);
-    canvas.drawPath(chartPath, linePaint);
-
-    canvas.drawCircle(Offset(size.width - 70, 78), 8, accentPaint);
-    canvas.drawCircle(Offset(size.width - 48, 78), 8, dotPaint);
+  Path getClip(Size size) {
+    Path path = Path();
+    path.moveTo(0, 50); // Start point
+    path.quadraticBezierTo(
+      size.width / 2,
+      0,
+      size.width,
+      50,
+    ); // Curve to top middle then down
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

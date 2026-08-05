@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-
-// Remonter de 4 niveaux pour aller chercher les contrôleurs et constantes
+import 'package:provider/provider.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/client/task_controller.dart';
 import '../../../../constants/app_colors.dart';
+import '../../../../utils/ui/ui_utils.dart';
 
 class CreateMissionView extends StatefulWidget {
-  final AuthController authController;
-
-  const CreateMissionView({super.key, required this.authController});
+  const CreateMissionView({super.key});
 
   @override
   State<CreateMissionView> createState() => _CreateMissionViewState();
@@ -16,9 +14,7 @@ class CreateMissionView extends StatefulWidget {
 
 class _CreateMissionViewState extends State<CreateMissionView> {
   final _formKey = GlobalKey<FormState>();
-  final TaskController _taskController = TaskController();
 
-  // Contrôleurs de saisie
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _budgetController = TextEditingController();
@@ -36,17 +32,21 @@ class _CreateMissionViewState extends State<CreateMissionView> {
     super.dispose();
   }
 
-  // Fonction pour ouvrir le sélecteur de date natif
   Future<void> _pickDeadline(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)), // Limite à 1 an
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primary),
+            colorScheme: const ColorScheme.light(
+              primary: Colors.black,
+              onPrimary: AppColors.primary,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
           ),
           child: child!,
         );
@@ -54,52 +54,36 @@ class _CreateMissionViewState extends State<CreateMissionView> {
     );
 
     if (picked != null && picked != _selectedDeadline) {
-      setState(() {
-        _selectedDeadline = picked;
-      });
+      setState(() => _selectedDeadline = picked);
     }
   }
 
-  // Soumission du formulaire
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSubmitting = true);
-
+    
+    final taskController = context.read<TaskController>();
+    
     try {
-      final success = await _taskController.createTask(
+      final success = await taskController.createTask(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         budget: double.parse(_budgetController.text.trim()),
         location: _locationController.text.trim(),
+        deadline: _selectedDeadline,
       );
 
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('La mission a été créée avec succès ! 🎉'),
-            backgroundColor: AppColors.success,
-          ),
-        );
+      if (!mounted) return;
+
+      if (success) {
+        UIUtils.showSuccess(context, 'Mission publiée ! 🎉');
         Navigator.pop(context, true);
-      } else if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _taskController.errorMessage ?? 'Impossible de créer la mission.',
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+      } else {
+        UIUtils.showError(context, taskController.errorMessage ?? 'Erreur lors de la publication');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de la création : $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        UIUtils.showError(context, 'Erreur : $e');
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -108,205 +92,147 @@ class _CreateMissionViewState extends State<CreateMissionView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLowest,
-
-      // --- APP BAR ---
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.black, size: 28),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Publier une Mission',
           style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: Colors.black,
+            fontSize: 20,
             letterSpacing: -0.5,
           ),
         ),
         centerTitle: true,
+        backgroundColor: Colors.white,
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: theme.colorScheme.onSurface,
       ),
-
-      // --- FORMULAIRE ---
       body: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Décrivez votre besoin',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    const Text(
+                      'Informations Générales',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Champ 1 : Titre de la mission
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    _buildField(
                       controller: _titleController,
-                      decoration: _buildInputDecoration(
-                        hintText: 'Ex: Développeur Full-Stack Laravel/Flutter',
-                        labelText: 'Titre de la mission',
-                        icon: Icons.assignment_outlined,
-                        theme: theme,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Veuillez entrer un titre pour la mission';
-                        }
-                        return null;
-                      },
+                      label: 'Titre de la mission',
+                      hint: 'Ex: Création de logo moderne',
+                      icon: Icons.edit_note_rounded,
+                      validator: (v) => v!.isEmpty ? 'Titre requis' : null,
                     ),
                     const SizedBox(height: 20),
-
-                    // Champ 2 : Description détaillée
-                    TextFormField(
+                    _buildField(
                       controller: _descriptionController,
+                      label: 'Description détaillée',
+                      hint: 'Décrivez votre besoin en quelques lignes...',
+                      icon: Icons.description_rounded,
                       maxLines: 5,
-                      keyboardType: TextInputType.multiline,
-                      decoration: _buildInputDecoration(
-                        hintText:
-                            'Décrivez précisément les tâches à accomplir, les compétences requises et les livrables attendus...',
-                        labelText: 'Description détaillée',
-                        icon: Icons.description_outlined,
-                        theme: theme,
-                      ).copyWith(alignLabelWithHint: true),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Veuillez ajouter une description claire';
-                        }
-                        if (value.trim().length < 10) {
-                          return 'La description est trop courte (10 car. minimum)';
-                        }
-                        return null;
-                      },
+                      validator: (v) =>
+                          v!.length < 10 ? 'Description trop courte' : null,
                     ),
-                    const SizedBox(height: 24),
-
-                    Text(
-                      'Budget & Conditions',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Champ 3 : Budget en F CFA
-                    TextFormField(
-                      controller: _budgetController,
-                      keyboardType: TextInputType.number,
-                      decoration: _buildInputDecoration(
-                        hintText: 'Ex: 150000',
-                        labelText: 'Budget (F CFA)',
-                        icon: Icons.account_balance_wallet_outlined,
-                        theme: theme,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Le budget est obligatoire';
-                        }
-                        final parsed = double.tryParse(value);
-                        if (parsed == null || parsed <= 0) {
-                          return 'Veuillez entrer un montant valide supérieur à 0';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Champ 4 : Localisation (optionnelle)
-                    TextFormField(
-                      controller: _locationController,
-                      decoration: _buildInputDecoration(
-                        hintText: 'Ex: Abidjan, Plateau',
-                        labelText: 'Localisation (optionnelle)',
-                        icon: Icons.location_on_outlined,
-                        theme: theme,
+                    const SizedBox(height: 30),
+                    const Text(
+                      'Budget & Détails',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Champ 4 : Date limite (Deadline)
-                    InkWell(
-                      onTap: () => _pickDeadline(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.dividerColor.withValues(alpha: 0.1),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildField(
+                            controller: _budgetController,
+                            label: 'Budget (FCFA)',
+                            hint: '0.00',
+                            icon: Icons.payments_rounded,
+                            keyboardType: TextInputType.number,
+                            validator: (v) =>
+                                (double.tryParse(v ?? '') ?? 0) <= 0
+                                ? 'Montant invalide'
+                                : null,
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              color: theme.hintColor,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _pickDeadline(context),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Date limite de livraison',
+                                  const Text(
+                                    'Date Limite',
                                     style: TextStyle(
-                                      color: theme.hintColor,
-                                      fontSize: 12,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 5),
                                   Text(
                                     _selectedDeadline == null
-                                        ? 'Aucune date sélectionnée (Optionnel)'
-                                        : '${_selectedDeadline!.day.toString().padLeft(2, '0')}/${_selectedDeadline!.month.toString().padLeft(2, '0')}/${_selectedDeadline!.year}',
-                                    style: TextStyle(
+                                        ? 'Choisir'
+                                        : '${_selectedDeadline!.day}/${_selectedDeadline!.month}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
                                       fontSize: 14,
-                                      fontWeight: _selectedDeadline == null
-                                          ? FontWeight.normal
-                                          : FontWeight.bold,
-                                      color: _selectedDeadline == null
-                                          ? theme.hintColor
-                                          : theme.colorScheme.onSurface,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            Icon(Icons.arrow_drop_down, color: theme.hintColor),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                    const SizedBox(height: 20),
+                    _buildField(
+                      controller: _locationController,
+                      label: 'Localisation',
+                      hint: 'Ex: Abidjan / Télétravail',
+                      icon: Icons.location_on_rounded,
+                    ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
           ),
-
-          // --- SECTION BASSE : BOUTON SOUUMISSION CONSTANT ---
           Container(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: theme.cardColor,
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
-                  offset: const Offset(0, -4),
+                  offset: const Offset(0, -5),
                 ),
               ],
             ),
@@ -314,28 +240,20 @@ class _CreateMissionViewState extends State<CreateMissionView> {
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 52),
+                  backgroundColor: Colors.black,
+                  foregroundColor: AppColors.primary,
+                  minimumSize: const Size(double.infinity, 60),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  elevation: 0,
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
+                    ? const CircularProgressIndicator(color: AppColors.primary)
                     : const Text(
                         'Publier la mission',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
               ),
@@ -346,40 +264,59 @@ class _CreateMissionViewState extends State<CreateMissionView> {
     );
   }
 
-  // Décoration utilitaire pour uniformiser les champs textuels
-  InputDecoration _buildInputDecoration({
-    required String hintText,
-    required String labelText,
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
     required IconData icon,
-    required ThemeData theme,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
-    return InputDecoration(
-      hintText: hintText,
-      labelText: labelText,
-      prefixIcon: Icon(icon, size: 22),
-      filled: true,
-      fillColor: theme.colorScheme.surface,
-      labelStyle: TextStyle(color: theme.hintColor),
-      hintStyle: TextStyle(
-        color: theme.hintColor.withValues(alpha: 0.6),
-        fontSize: 13,
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: theme.dividerColor.withValues(alpha: 0.05),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey,
+          ),
         ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: theme.dividerColor.withValues(alpha: 0.1),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          validator: validator,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: Colors.grey[300],
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: Icon(icon, color: Colors.black, size: 20),
+            filled: true,
+            fillColor: Colors.grey[50],
+            contentPadding: const EdgeInsets.all(18),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: Colors.grey[100]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: const BorderSide(color: Colors.black, width: 1.5),
+            ),
+          ),
         ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-      ),
+      ],
     );
   }
 }

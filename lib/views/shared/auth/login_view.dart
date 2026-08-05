@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../controllers/auth/auth_controller.dart';
 import '../../../utils/validators.dart';
-import '../widgets/custom_button.dart';
+import '../../../utils/ui/ui_utils.dart';
+import '../../../routes/app_router.dart';
+import '../../../routes/freelance_routes.dart';
+import '../../../models/auth/user_model.dart';
+import '../../smartphone/onbor/landing_transition_page.dart'; 
+import 'custom_button.dart';
 import '../widgets/custom_text_field.dart';
 
 class LoginView extends StatefulWidget {
@@ -15,61 +21,45 @@ class _LoginViewState extends State<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final _authController = AuthController();
 
   bool _obscurePassword = true;
 
   @override
-  void initState() {
-    super.initState();
-    _authController.addListener(_onAuthChanged);
-  }
-
-  @override
   void dispose() {
-    _authController.removeListener(_onAuthChanged);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _onAuthChanged() {
-    if (!mounted) return;
-    
-    // UI update triggered by controller listener
-    setState(() {});
-
-    if (_authController.isAuthenticated) {
-      Navigator.pushReplacementNamed(
-        context,
-        '/dashboard',
-        arguments: _authController,
-      );
-    }
-
-    if (_authController.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_authController.errorMessage!),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    }
-  }
-
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
-      _authController.login(
+      final authController = context.read<AuthController>();
+      final success = await authController.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
+      
+      if (!mounted) return;
+
+      if (success) {
+        final role = authController.currentUser?.role ?? UserRole.client;
+        Navigator.pushReplacementNamed(
+          context,
+          resolveRedirectRoute(role),
+        );
+      } else if (authController.errorMessage != null) {
+        UIUtils.showError(context, authController.errorMessage!);
+      }
+    } else {
+      UIUtils.showInfo(context, 'Veuillez compléter tous les champs correctement.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final authController = context.watch<AuthController>();
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -140,11 +130,11 @@ class _LoginViewState extends State<LoginView> {
                   // Submit Button
                   CustomButton(
                     text: 'Se connecter',
-                    isLoading: _authController.isLoading,
+                    isLoading: authController.isLoading,
                     onPressed: _submit,
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Bypass Buttons for Layout Testing
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -153,8 +143,7 @@ class _LoginViewState extends State<LoginView> {
                         onPressed: () {
                           Navigator.pushReplacementNamed(
                             context,
-                            '/dashboard',
-                            arguments: _authController,
+                            '/client/home',
                           );
                         },
                         child: const Text('Aperçu Client'),
@@ -164,8 +153,7 @@ class _LoginViewState extends State<LoginView> {
                         onPressed: () {
                           Navigator.pushReplacementNamed(
                             context,
-                            '/freelance/dashboard',
-                            arguments: _authController,
+                            FreelanceRouteNames.dashboard,
                           );
                         },
                         child: const Text('Aperçu Freelance'),
@@ -181,12 +169,14 @@ class _LoginViewState extends State<LoginView> {
                       Text(
                         'Nouveau sur la plateforme ?',
                         style: TextStyle(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushNamed(context, '/register');
+                          Navigator.pushNamed(context, AppRouteNames.register);
                         },
                         child: const Text(
                           'Créer un compte',

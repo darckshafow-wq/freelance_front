@@ -1,165 +1,230 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../controllers/auth/auth_controller.dart';
+import '../../shared/feedback/my_feedbacks_page.dart';
 
 class ClientProfilePage extends StatelessWidget {
-  final AuthController authController;
-
-  const ClientProfilePage({super.key, required this.authController});
+  const ClientProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final authController = context.watch<AuthController>();
     final user = authController.currentUser;
     final userName = user?.fullName ?? 'Client';
     final userEmail = user?.email ?? 'client@email.com';
     final userRole = user?.role.name.toUpperCase() ?? 'CLIENT';
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLowest,
-      appBar: AppBar(
-        title: const Text(
-          'Profil',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        foregroundColor: theme.colorScheme.onSurface,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- HEADER DU PROFIL ---
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.shadowColor.withValues(alpha: 0.05),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- HEADER DU PROFIL (STYLE MODERNE) ---
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.black,
                     child: Text(
                       userName.isNotEmpty ? userName[0].toUpperCase() : 'C',
                       style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
                         color: AppColors.primary,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          userName,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            userRole,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    userRole,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black54,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 32),
+          ),
+          const SizedBox(height: 30),
 
-            // --- INFORMATIONS ---
-            Text(
-              'Informations Personnelles',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          // --- LA CARTE DE BUDGET ---
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _ProfileItem(
-              theme: theme,
-              icon: Icons.email_outlined,
-              title: 'Email',
-              value: userEmail,
-            ),
-            const SizedBox(height: 12),
-            _ProfileItem(
-              theme: theme,
-              icon: Icons.phone_outlined,
-              title: 'Téléphone',
-              value: user?.phoneNumber ?? 'Non renseigné',
-            ),
-            const SizedBox(height: 12),
-            _ProfileItem(
-              theme: theme,
-              icon: Icons.verified_user_outlined,
-              title: 'Statut du compte',
-              value: user?.isVerified ?? false ? 'Vérifié' : 'Non vérifié',
-              valueColor: user?.isVerified ?? false ? AppColors.success : AppColors.warning,
-            ),
-            const SizedBox(height: 32),
-
-            // --- BOUTON DE DECONNEXION ---
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  authController.logout();
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/login',
-                    (route) => false,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error.withValues(alpha: 0.1),
-                  foregroundColor: AppColors.error,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Budget total investi',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '1.250.000 F CFA',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: AppColors.primary,
+                    size: 30,
                   ),
                 ),
-                icon: const Icon(Icons.logout),
-                label: const Text(
-                  'Déconnexion',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              ],
+            ),
+          ),
+          const SizedBox(height: 35),
+
+          // --- INFORMATIONS ---
+          const Text(
+            'Informations du compte',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _ProfileItem(
+            icon: Icons.email_rounded,
+            title: 'Email',
+            value: userEmail,
+          ),
+          const SizedBox(height: 15),
+          _ProfileItem(
+            icon: Icons.phone_android_rounded,
+            title: 'Téléphone',
+            value: user?.phoneNumber ?? 'Non renseigné',
+          ),
+          const SizedBox(height: 15),
+          _ProfileItem(
+            icon: Icons.security_rounded,
+            title: 'Statut du compte',
+            value: user?.isVerified ?? false ? 'Compte Vérifié' : 'Non vérifié',
+            valueColor: user?.isVerified ?? false
+                ? AppColors.success
+                : Colors.orange,
+          ),
+          const SizedBox(height: 15),
+          _ProfileItem(
+            icon: Icons.calendar_month_rounded,
+            title: 'Membre depuis',
+            value: user?.createdAt != null
+                ? () {
+                    final dt = user!.createdAt!;
+                    return '${dt.day}/${dt.month}/${dt.year}';
+                  }()
+                : 'N/A',
+          ),
+          const SizedBox(height: 15),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MyFeedbacksPage(
+                    authController: authController,
+                  ),
+                ),
+              );
+            },
+            child: const _ProfileItem(
+              icon: Icons.feedback_rounded,
+              title: 'Support / Feedback',
+              value: 'Signaler un bug ou faire une suggestion',
+            ),
+          ),
+          const SizedBox(height: 40),
+
+          // --- BOUTON DE DECONNEXION ---
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                authController.logout();
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                foregroundColor: Colors.redAccent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text(
+                'Se déconnecter',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 100),
+        ],
       ),
     );
   }
@@ -167,14 +232,12 @@ class ClientProfilePage extends StatelessWidget {
 
 class _ProfileItem extends StatelessWidget {
   const _ProfileItem({
-    required this.theme,
     required this.icon,
     required this.title,
     required this.value,
     this.valueColor,
   });
 
-  final ThemeData theme;
   final IconData icon;
   final String title;
   final String value;
@@ -183,15 +246,22 @@ class _ProfileItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primary, size: 22),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.black, size: 22),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -199,16 +269,19 @@ class _ProfileItem extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.hintColor,
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: valueColor,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: valueColor ?? Colors.black,
                   ),
                 ),
               ],

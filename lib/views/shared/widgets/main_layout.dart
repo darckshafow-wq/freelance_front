@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../controllers/auth/auth_controller.dart';
+import '../../../routes/app_router.dart';
 import 'app_bottom_navigation.dart';
 
 class MainLayout extends StatelessWidget {
@@ -25,7 +26,7 @@ class MainLayout extends StatelessWidget {
     final isLargeScreen = MediaQuery.of(context).size.width >= 800;
 
     return Scaffold(
-      // L'AppBar s'affiche uniquement sur mobile/tablette
+      // AppBar uniquement sur mobile/tablette
       appBar: isLargeScreen
           ? null
           : AppBar(
@@ -33,29 +34,21 @@ class MainLayout extends StatelessWidget {
               centerTitle: false,
               elevation: 0,
               actions: [
-                // Bouton déconnexion rapide dans l'AppBar sur Mobile
                 IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () {
                     authController.logout();
-                    Navigator.pushReplacementNamed(context, '/login');
+                    Navigator.pushReplacementNamed(context, AppRouteNames.login);
                   },
                 ),
               ],
             ),
 
-      // 2. AJOUT DE LA BOTTOM NAVIGATION SUR MOBILE UNIQUEMENT
-      bottomNavigationBar: isLargeScreen
-          ? null // Rien en bas sur ordinateur
-          : AppBottomNavigation(
-              authController: authController,
-              currentRoute: currentRoute,
-            ),
-
+      // Pas de bottomNavigationBar natif — on utilise un Stack
       floatingActionButton: floatingActionButton,
       body: Row(
         children: [
-          // Sidebar persistante uniquement pour les grands écrans
+          // Sidebar desktop
           if (isLargeScreen)
             Container(
               decoration: BoxDecoration(
@@ -73,17 +66,14 @@ class MainLayout extends StatelessWidget {
               ),
             ),
 
-          // Contenu principal de la page
           Expanded(
             child: Container(
-              // Correction au passage: 'background' est obsolète, on utilise 'surface'
               color: theme.colorScheme.surface,
               child: isLargeScreen
                   ? SafeArea(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Barre de titre haut de page (Desktop) avec déconnexion
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24.0,
@@ -94,30 +84,20 @@ class MainLayout extends StatelessWidget {
                               children: [
                                 Text(
                                   title,
-                                  style: theme.textTheme.headlineSmall
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.primary,
-                                      ),
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
                                 ),
-                                // Bouton déconnexion version Desktop
                                 TextButton.icon(
                                   onPressed: () {
                                     authController.logout();
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/login',
-                                    );
+                                    Navigator.pushReplacementNamed(context, AppRouteNames.login);
                                   },
-                                  icon: Icon(
-                                    Icons.logout,
-                                    color: theme.colorScheme.error,
-                                  ),
+                                  icon: Icon(Icons.logout, color: theme.colorScheme.error),
                                   label: Text(
                                     'Déconnexion',
-                                    style: TextStyle(
-                                      color: theme.colorScheme.error,
-                                    ),
+                                    style: TextStyle(color: theme.colorScheme.error),
                                   ),
                                 ),
                               ],
@@ -128,7 +108,26 @@ class MainLayout extends StatelessWidget {
                         ],
                       ),
                     )
-                  : body,
+                  // ── Mobile : Stack pour la nav flottante ──────────────
+                  : Stack(
+                      children: [
+                        // Contenu avec padding bas pour que la nav ne recouvre pas
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 88),
+                          child: body,
+                        ),
+                        // Nav flottante en bas
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: AppBottomNavigation(
+                            authController: authController,
+                            currentRoute: currentRoute,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ],

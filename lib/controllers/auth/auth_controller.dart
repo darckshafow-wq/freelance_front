@@ -27,11 +27,71 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> restoreSession() async {
+    _setLoading(true);
+    _setError(null);
+    final storedToken = await ApiClient.getStoredToken();
+
+    if (storedToken == null || storedToken.isEmpty) {
+      _currentUser = null;
+      _setLoading(false);
+      return;
+    }
+
+    ApiClient.setToken(storedToken);
+
+    if (ApiClient.mockMode) {
+      _currentUser = UserModel(
+        id: 1,
+        email: 'client@mock.com',
+        fullName: 'Client Test',
+        role: UserRole.client,
+        isClient: true,
+      );
+      _setLoading(false);
+      return;
+    }
+
+    final response = await _apiClient.get<UserModel>(
+      endpoint: ApiEndpoints.meProfile,
+      parser: (json) => UserModel.fromJson(json as Map<String, dynamic>),
+    );
+
+    if (response.isSuccess && response.data != null) {
+      final restoredUser = response.data!;
+      if (restoredUser.id <= 0 || restoredUser.email.isEmpty) {
+        await ApiClient.clearToken();
+        _currentUser = null;
+        _setError('Session invalide, veuillez vous reconnecter.');
+      } else {
+        _currentUser = restoredUser;
+        notifyListeners();
+      }
+    } else {
+      await ApiClient.clearToken();
+      _currentUser = null;
+      _setError('Session expirée, veuillez vous reconnecter.');
+    }
+
+    _setLoading(false);
+  }
+
   // Login using FastAPI OAuth2 standard password flow (form URL encoded)
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _setError(null);
-    dev.log('[AuthController] login() start email=$email');
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      _currentUser = UserModel(
+        id: 1,
+        email: email,
+        fullName: 'Client Mock',
+        role: UserRole.client,
+        isClient: true,
+      );
+      _setLoading(false);
+      return true;
+    }
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.login,
@@ -67,14 +127,19 @@ class AuthController extends ChangeNotifier {
   // Récupère le profil via /users/me (quand user_id absent du token response)
   Future<bool> fetchCurrentUserViaMe() async {
     final response = await _apiClient.get<UserModel>(
-      endpoint: ApiEndpoints.me,
+      endpoint: ApiEndpoints.meProfile,
       parser: (json) => UserModel.fromJson(json as Map<String, dynamic>),
     );
 
-    _setLoading(false);
-
     if (response.isSuccess && response.data != null) {
-      _currentUser = response.data;
+      final user = response.data!;
+      if (user.id <= 0 || user.email.isEmpty) {
+        _setError('Profil utilisateur invalide');
+        logout();
+        return false;
+      }
+
+      _currentUser = user;
       notifyListeners();
       return true;
     } else {
@@ -93,9 +158,24 @@ class AuthController extends ChangeNotifier {
     required String fullName,
     required UserRole role,
     String? phoneNumber,
+    String? location,
   }) async {
     _setLoading(true);
     _setError(null);
+
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+      _currentUser = UserModel(
+        id: 2,
+        email: email,
+        fullName: fullName,
+        role: UserRole.client,
+        isClient: true,
+        isFreelancer: false,
+      );
+      _setLoading(false);
+      return true;
+    }
 
     final body = {
       'email': email,
@@ -105,6 +185,7 @@ class AuthController extends ChangeNotifier {
       'is_freelancer': role == UserRole.freelancer,
       'is_admin': role == UserRole.admin,
       'phone_number': phoneNumber,
+      'location': location,
     };
 
     final response = await _apiClient.post<UserModel>(
@@ -127,11 +208,9 @@ class AuthController extends ChangeNotifier {
   // Fetch the current user profile from `/users/{id}`
   Future<bool> fetchCurrentUserProfile(int userId) async {
     final response = await _apiClient.get<UserModel>(
-      endpoint: ApiEndpoints.userById(userId),
+      endpoint: ApiEndpoints.userProfileById(userId),
       parser: (json) => UserModel.fromJson(json as Map<String, dynamic>),
     );
-
-    _setLoading(false);
 
     if (response.isSuccess) {
       _currentUser = response.data;
@@ -150,6 +229,12 @@ class AuthController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     dev.log('[AuthController] sendOtp() start email=$email');
+
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      _setLoading(false);
+      return true;
+    }
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.sendOtp,
@@ -175,6 +260,27 @@ class AuthController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     dev.log('[AuthController] verifyOtp() start email=$email code=$code');
+
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (_currentUser != null) {
+        _currentUser = UserModel(
+          id: _currentUser!.id,
+          email: _currentUser!.email,
+          fullName: _currentUser!.fullName,
+          role: _currentUser!.role,
+          phoneNumber: _currentUser!.phoneNumber,
+          createdAt: _currentUser!.createdAt,
+          isActive: _currentUser!.isActive,
+          isClient: _currentUser!.isClient,
+          isFreelancer: _currentUser!.isFreelancer,
+          isAdmin: _currentUser!.isAdmin,
+          isVerified: true,
+        );
+      }
+      _setLoading(false);
+      return true;
+    }
 
     final response = await _apiClient.post<Map<String, dynamic>>(
       endpoint: ApiEndpoints.verifyOtp,

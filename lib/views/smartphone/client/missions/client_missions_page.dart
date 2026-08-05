@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../constants/app_colors.dart';
 import '../../../../controllers/client/task_controller.dart';
 import '../../../../models/client/task_model.dart';
@@ -12,171 +13,101 @@ class ClientMissionsPage extends StatefulWidget {
 }
 
 class _ClientMissionsPageState extends State<ClientMissionsPage> {
-  final TaskController _taskController = TaskController();
   TaskStatus _selectedStatus = TaskStatus.pending;
 
   @override
   void initState() {
     super.initState();
-    _taskController.addListener(_onTaskChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _taskController.fetchTasks();
+      context.read<TaskController>().fetchTasks();
     });
   }
 
-  @override
-  void dispose() {
-    _taskController.removeListener(_onTaskChanged);
-    _taskController.dispose();
-    super.dispose();
-  }
-
-  void _onTaskChanged() {
-    if (mounted) setState(() {});
-  }
-
-  List<TaskModel> get _filteredTasks {
-    return _taskController.tasks
+  List<TaskModel> _getFilteredTasks(TaskController controller) {
+    return controller.tasks
         .where((task) => task.status == _selectedStatus)
         .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Mes missions'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.lightTextPrimary,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, ClientRouteNames.createMission);
-        },
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Nouvelle tâche'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => _taskController.fetchTasks(),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Text(
-              'Mes missions postées',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            _StatusTabBar(
+    final taskController = context.watch<TaskController>();
+    final filteredTasks = _getFilteredTasks(taskController);
+
+    return RefreshIndicator(
+      color: Colors.black,
+      backgroundColor: AppColors.primary,
+      onRefresh: () => taskController.fetchTasks(),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            child: _StatusTabBar(
               selectedStatus: _selectedStatus,
               onStatusSelected: (status) {
                 setState(() => _selectedStatus = status);
               },
             ),
-            const SizedBox(height: 16),
-            if (_taskController.isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                ),
-              )
-            else if (_taskController.errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Card(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+          ),
+          Expanded(
+            child: taskController.isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.black),
+                  )
+                : filteredTasks.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    itemCount: filteredTasks.length,
+                    itemBuilder: (context, index) {
+                      final task = filteredTasks[index];
+                      return _MissionCard(
+                        task: task,
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            ClientRouteNames.missionDetail,
+                            arguments: task.id,
+                          );
+                        },
+                      );
+                    },
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      children: [
-                        Text(
-                          _taskController.errorMessage!,
-                          style: const TextStyle(color: AppColors.error),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () => _taskController.fetchTasks(),
-                          child: const Text('Réessayer'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            else if (_filteredTasks.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.assignment_late_outlined,
-                      size: 56,
-                      color: AppColors.lightTextSecondary,
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Aucune mission ${_selectedStatus == TaskStatus.pending
-                          ? 'en attente'
-                          : _selectedStatus == TaskStatus.validated
-                          ? 'validée'
-                          : 'terminée'} pour le moment.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              ..._filteredTasks.map(
-                (task) => _MissionCard(
-                  title: task.title,
-                  status: _statusLabel(task.status),
-                  count:
-                      '${task.assignedToId != null ? 'Assignée' : 'Non assignée'}',
-                  budget: task.budget,
-                  deadline: task.deadline,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      ClientRouteNames.missionDetail,
-                      arguments: task.id,
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 80),
+        ],
       ),
     );
   }
 
-  String _statusLabel(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.pending:
-        return 'En attente';
-      case TaskStatus.validated:
-        return 'Validée';
-      case TaskStatus.executed:
-        return 'Terminée';
-    }
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.assignment_late_rounded,
+            size: 80,
+            color: Colors.grey[200],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Aucune mission ${_selectedStatus == TaskStatus.pending
+                ? 'en attente'
+                : _selectedStatus == TaskStatus.validated
+                ? 'validée'
+                : 'terminée'}',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -191,40 +122,46 @@ class _StatusTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: TaskStatus.values.map((status) {
-        final bool isSelected = status == selectedStatus;
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: ElevatedButton(
-              onPressed: () => onStatusSelected(status),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isSelected ? AppColors.primary : Colors.white,
-                foregroundColor: isSelected
-                    ? Colors.white
-                    : AppColors.lightTextPrimary,
-                elevation: isSelected ? 2 : 0,
-                side: BorderSide(color: AppColors.lightBorder),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: TaskStatus.values.map((status) {
+          final bool isSelected = status == selectedStatus;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onStatusSelected(status),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 5,
+                          ),
+                        ]
+                      : [],
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                _label(status),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: isSelected ? Colors.white : AppColors.lightTextPrimary,
+                child: Text(
+                  _label(status),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                    fontSize: 12,
+                    color: isSelected ? Colors.black : Colors.grey,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -241,107 +178,150 @@ class _StatusTabBar extends StatelessWidget {
 }
 
 class _MissionCard extends StatelessWidget {
-  const _MissionCard({
-    required this.title,
-    required this.status,
-    required this.count,
-    required this.budget,
-    required this.deadline,
-    required this.onTap,
-  });
+  const _MissionCard({required this.task, required this.onTap});
 
-  final String title;
-  final String status;
-  final String count;
-  final double budget;
-  final DateTime? deadline;
+  final TaskModel task;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.lightBorder),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Expanded(
+                    child: Text(
+                      task.title,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  _buildStatusChip(task.status),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${task.budget.toStringAsFixed(0)} FCFA',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    task.assignedToId != null ? 'Assignée' : 'Non assignée',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    status,
-                    style: TextStyle(color: AppColors.lightTextSecondary),
-                  ),
-                  const SizedBox(height: 10),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Row(
                     children: [
                       Icon(
-                        Icons.account_balance_wallet_outlined,
-                        size: 16,
-                        color: AppColors.primary,
+                        Icons.calendar_today_rounded,
+                        size: 14,
+                        color: Colors.grey[400],
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '${budget.toStringAsFixed(0)} F CFA',
-                        style: const TextStyle(
-                          color: AppColors.primary,
+                        task.deadline != null
+                            ? '${task.deadline!.day}/${task.deadline!.month}/${task.deadline!.year}'
+                            : 'Sans date',
+                        style: TextStyle(
+                          color: Colors.grey[500],
                           fontWeight: FontWeight.w700,
+                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    count,
-                    style: const TextStyle(
-                      color: AppColors.lightTextSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Colors.black26,
                   ),
-                  if (deadline != null) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: AppColors.lightTextSecondary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${deadline!.day.toString().padLeft(2, '0')}/${deadline!.month.toString().padLeft(2, '0')}/${deadline!.year}',
-                          style: const TextStyle(
-                            color: AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: AppColors.primary,
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(TaskStatus status) {
+    Color color;
+    String label;
+    switch (status) {
+      case TaskStatus.pending:
+        color = Colors.orange;
+        label = 'EN ATTENTE';
+        break;
+      case TaskStatus.validated:
+        color = Colors.green;
+        label = 'VALIDÉE';
+        break;
+      case TaskStatus.executed:
+        color = Colors.blue;
+        label = 'TERMINÉE';
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );

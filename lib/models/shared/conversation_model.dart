@@ -8,6 +8,7 @@ class ConversationContact {
   taskTitle; // Le titre de la tâche (utile pour l'affichage du contexte)
   final String lastMessage;
   final DateTime lastTimestamp;
+  final String? applicationStatus; // Statut de la candidature (pending, interview, accepted)
 
   ConversationContact({
     required this.userId,
@@ -17,12 +18,14 @@ class ConversationContact {
     required this.taskTitle,
     required this.lastMessage,
     required this.lastTimestamp,
+    this.applicationStatus,
   });
 
   factory ConversationContact.fromJson(Map<String, dynamic> json) {
     // Backend retourne : contact_id, contact_name, last_message, last_timestamp
     // associated_task_id, associated_task_title
-    String lastMsg = json['last_message']?.toString() ?? 'Nouvelle discussion ouverte !';
+    String lastMsg =
+        json['last_message']?.toString() ?? 'Nouvelle discussion ouverte !';
     String? tsRaw = json['last_timestamp']?.toString();
     DateTime lastTime = tsRaw != null
         ? (DateTime.tryParse(tsRaw) ?? DateTime.now())
@@ -36,6 +39,7 @@ class ConversationContact {
       taskTitle: json['associated_task_title'] as String? ?? '',
       lastMessage: lastMsg,
       lastTimestamp: lastTime,
+      applicationStatus: json['application_status']?.toString(),
     );
   }
 }

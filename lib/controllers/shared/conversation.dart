@@ -1,7 +1,6 @@
 import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import '../../services/api/api_core.dart';
-import '../../services/api/api_endpoints.dart';
 import '../../models/shared/conversation_model.dart';
 
 class ChatListController extends ChangeNotifier {
@@ -24,19 +23,40 @@ class ChatListController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Récupère la liste globale des conversations de l'utilisateur connecté.
-  /// Le paramètre currentUserId est conservé pour les logs, mais n'est plus passé
-  /// à l'URL car l'API FastAPI identifie l'utilisateur via son token Bearer.
-  Future<void> fetchConversations(int currentUserId) async {
+  /// Récupère la liste des conversations de l'utilisateur connecté.
+  /// [conversationsEndpoint] doit être passé depuis la page appelante selon le rôle :
+  ///   - freelance → ApiEndpoints.freelanceConversations
+  ///   - client    → ApiEndpoints.clientConversations
+  Future<void> fetchConversations(
+    int currentUserId, {
+    required String conversationsEndpoint,
+  }) async {
     dev.log(
-      '[ChatListController] fetchConversations() started for user $currentUserId',
+      '[ChatListController] fetchConversations() started for user $currentUserId on $conversationsEndpoint',
     );
     _setLoading(true);
     _setError(null);
 
-    // Utilise l'endpoint des conversations présent dans l'OpenAPI backend.
+    if (ApiClient.mockMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      _contacts = [
+        ConversationContact(
+          userId: 99,
+          userName: 'Jean Freelance',
+          lastMessage: 'Bonjour, je suis intéressé par votre mission.',
+          lastTimestamp: DateTime.now().subtract(const Duration(minutes: 15)),
+          taskId: 1,
+          taskTitle: 'Création de Logo Premium',
+          applicationId: 10,
+          applicationStatus: 'interview',
+        ),
+      ];
+      _setLoading(false);
+      return;
+    }
+
     final resp = await _apiClient.get<List<ConversationContact>>(
-      endpoint: ApiEndpoints.freelanceConversations,
+      endpoint: conversationsEndpoint,
       parser: (json) {
         final list = json as List<dynamic>;
         return list

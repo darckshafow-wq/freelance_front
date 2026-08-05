@@ -2,25 +2,37 @@ import 'dart:convert';
 import 'dart:developer' as dev;
 import 'package:http/http.dart' as http;
 import 'api_response.dart';
+import 'api_endpoints.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   static String? _authToken;
+  static bool mockMode = true; // Activer pour tester le design sans backend
 
   // Getter public pour permettre au routeur de vérifier l'authentification
   static String? get currentToken => _authToken;
 
   static Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _authToken = prefs.getString('token');
+      if (!mockMode) {
+        await ApiEndpoints.resolveBackendHost();
+      }
+      _authToken = await getStoredToken();
       if (_authToken != null) {
-        //dev.log(
-        // '[ApiClient] token restaure au demarage : ${_authToken.substring(0, 10)}.....',
-        //);
+        dev.log('[ApiClient] token restored from storage');
       }
     } catch (e) {
       dev.log('[ApiClient] imposible decharger le token stoker: $e');
+    }
+  }
+
+  static Future<String?> getStoredToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      dev.log('errreur de lecture du token depuis la mémoire: $e');
+      return null;
     }
   }
 
@@ -60,9 +72,11 @@ class ApiClient {
     T Function(dynamic json) parser,
   ) {
     final int statusCode = response.statusCode;
-    dev.log(
-      'API Response: [${response.request?.method}] ${response.request?.url} -> Status $statusCode',
-    );
+    if (!mockMode) {
+      dev.log(
+        'API Response: [${response.request?.method}] ${response.request?.url} -> Status $statusCode',
+      );
+    }
 
     try {
       final decodedJson = jsonDecode(response.body);
@@ -98,6 +112,12 @@ class ApiClient {
     required T Function(dynamic json) parser,
     bool requiresAuth = true,
   }) async {
+    if (mockMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      // Guessing based on common return types: List or Object
+      final dynamic mockJson = endpoint.contains('list') || endpoint.endsWith('s') ? [] : <String, dynamic>{};
+      return ApiResponse.success(parser(mockJson));
+    }
     try {
       dev.log('API GET Request to: $endpoint');
       final response = await http.get(
@@ -119,6 +139,10 @@ class ApiClient {
     bool isFormUrlEncoded =
         false, // FastAPI /token login requires formUrlEncoded
   }) async {
+    if (mockMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      return ApiResponse.success(parser(<String, dynamic>{}));
+    }
     try {
       dev.log('API POST Request to: $endpoint with body: $body');
 
@@ -150,6 +174,10 @@ class ApiClient {
     required T Function(dynamic json) parser,
     bool requiresAuth = true,
   }) async {
+    if (mockMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      return ApiResponse.success(parser(<String, dynamic>{}));
+    }
     try {
       dev.log('API PUT Request to: $endpoint with body: $body');
       final response = await http.put(
@@ -169,6 +197,10 @@ class ApiClient {
     required T Function(dynamic json) parser,
     bool requiresAuth = true,
   }) async {
+    if (mockMode) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      return ApiResponse.success(parser(<String, dynamic>{}));
+    }
     try {
       dev.log('API DELETE Request to: $endpoint');
       final response = await http.delete(
