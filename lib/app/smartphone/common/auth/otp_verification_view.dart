@@ -6,7 +6,7 @@ import 'package:freelance_front/core/routes/route_names.dart';
 
 class OtpVerificationView extends StatefulWidget {
   final String email;
-  final String type; // 'verification' or 'forgot_password'
+  final String type;
 
   const OtpVerificationView({
     super.key,
@@ -24,12 +24,8 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
 
   @override
   void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
+    for (var controller in _controllers) controller.dispose();
+    for (var node in _focusNodes) node.dispose();
     super.dispose();
   }
 
@@ -40,15 +36,17 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
     if (widget.type == 'forgot_password') {
       context.pushNamed(RouteNames.resetPassword);
     } else {
-      // Inscription réussie -> Dashboard
       context.go('/client/dashboard');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 900;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: isDesktop ? AppColors.softWhite : AppColors.pureWhite,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -58,91 +56,102 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              const Text(
-                'Vérification',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.deepBlack,
+        child: Center(
+          child: Container(
+            width: isDesktop ? 500 : double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: isDesktop ? 50 : 32.0),
+            decoration: isDesktop ? BoxDecoration(
+              color: AppColors.pureWhite,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
                 ),
-              ).animate().fadeIn().slideX(begin: -0.1),
-              const SizedBox(height: 12),
-              RichText(
-                text: TextSpan(
-                  text: 'Entrez le code à 4 chiffres envoyé à ',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.neutralGray,
-                    fontWeight: FontWeight.w500,
-                    height: 1.5,
+              ],
+            ) : null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isDesktop) const SizedBox(height: 50),
+                const Text(
+                  'Vérification',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.deepBlack,
                   ),
-                  children: [
-                    TextSpan(
-                      text: widget.email,
-                      style: const TextStyle(
-                        color: AppColors.deepBlack,
-                        fontWeight: FontWeight.bold,
+                ).animate().fadeIn().slideX(begin: -0.1),
+                const SizedBox(height: 12),
+                RichText(
+                  text: TextSpan(
+                    text: 'Entrez le code à 4 chiffres envoyé à ',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppColors.neutralGray,
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: widget.email,
+                        style: const TextStyle(
+                          color: AppColors.deepBlack,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 200.ms),
+                const SizedBox(height: 48),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(4, (index) => _buildOtpBox(index)),
+                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                
+                const SizedBox(height: 48),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _onVerify,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.deepBlack,
+                      foregroundColor: AppColors.primaryGold,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 200.ms),
-              const SizedBox(height: 48),
-
-              // OTP Inputs
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(4, (index) => _buildOtpBox(index)),
-              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
-              
-              const SizedBox(height: 48),
-
-              // Verify Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _onVerify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlack,
-                    foregroundColor: AppColors.primaryGold,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    child: const Text(
+                      'Vérifier',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  child: const Text(
-                    'Vérifier',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 600.ms).scale(),
+                ).animate().fadeIn(delay: 600.ms).scale(),
 
-              const SizedBox(height: 32),
-              
-              Center(
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Renvoyer le code',
-                    style: TextStyle(
-                      color: AppColors.deepBlack,
-                      fontWeight: FontWeight.w700,
-                      decoration: TextDecoration.underline,
+                const SizedBox(height: 32),
+                
+                Center(
+                  child: TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      'Renvoyer le code',
+                      style: TextStyle(
+                        color: AppColors.deepBlack,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
-                ),
-              ).animate().fadeIn(delay: 800.ms),
-            ],
+                ).animate().fadeIn(delay: 800.ms),
+                if (isDesktop) const SizedBox(height: 50),
+              ],
+            ),
           ),
         ),
       ),
@@ -171,10 +180,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         maxLength: 1,
-        decoration: const InputDecoration(
-          counterText: '',
-          border: InputBorder.none,
-        ),
+        decoration: const InputDecoration(counterText: '', border: InputBorder.none),
         onChanged: (value) {
           if (value.isNotEmpty && index < 3) {
             _focusNodes[index + 1].requestFocus();

@@ -38,7 +38,7 @@ class ProposalCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.push(RouteNames.clientConversationDetail.replaceAll(':id', index.toString())),
+          onTap: () => context.pushNamed(RouteNames.clientConversationDetail, pathParameters: {'id': index.toString()}),
           borderRadius: BorderRadius.circular(32),
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -103,7 +103,7 @@ class ProposalCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => context.push(RouteNames.clientConversationDetail.replaceAll(':id', index.toString())),
+                        onPressed: () => context.pushNamed(RouteNames.clientConversationDetail, pathParameters: {'id': index.toString()}),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.deepBlack,
                           foregroundColor: AppColors.primaryGold,

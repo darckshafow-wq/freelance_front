@@ -35,6 +35,15 @@ class UserModel {
     this.profile,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Sanitize dummy avatar URLs that cause SocketExceptions
+    if (json['profile'] != null && json['profile']['avatar_url'] != null) {
+      final String avatar = json['profile']['avatar_url'].toString();
+      if (avatar.contains('.local') || avatar.contains('avatar.example')) {
+        json['profile']['avatar_url'] = 'https://ui-avatars.com/api/?name=${json['full_name'] ?? 'User'}&background=random';
+      }
+    }
+    return _$UserModelFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 }

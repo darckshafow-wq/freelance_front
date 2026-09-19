@@ -91,8 +91,8 @@ class _FloatingExpandableNavState extends State<FloatingExpandableNav> {
                       _buildItem(0, Icons.home_outlined, Icons.home_filled, 'Accueil'),
                       _buildItem(2, Icons.work_outline, Icons.work, 'Missions'),
                       const SizedBox(width: 58), // Central button space
-                      _buildItem(4, Icons.description_outlined, Icons.description, 'Offres'),
                       _buildItem(5, Icons.chat_bubble_outline, Icons.chat_bubble, 'Chat'),
+                      _buildItem(3, Icons.person_outline, Icons.person, 'Profil'),
                     ],
                   ),
                 ).animate().fadeIn(delay: 200.ms)
@@ -126,7 +126,7 @@ class _FloatingExpandableNavState extends State<FloatingExpandableNav> {
               ),
               child: Center(
                 child: Icon(
-                  _isExpanded ? Icons.add : Icons.touch_app_outlined,
+                  _isExpanded ? Icons.add_rounded : Icons.ads_click_rounded,
                   color: _isExpanded ? AppColors.deepBlack : AppColors.primaryGold,
                   size: 28,
                 )

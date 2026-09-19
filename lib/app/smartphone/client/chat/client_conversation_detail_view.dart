@@ -69,9 +69,9 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.softWhite, // Remplacé le fond beige WhatsApp par la couleur de l'app
+      backgroundColor: AppColors.softWhite,
       appBar: AppBar(
-        backgroundColor: AppColors.deepBlack, // Remplacé le vert WhatsApp par le noir profond de l'app
+        backgroundColor: AppColors.deepBlack,
         elevation: 0,
         leadingWidth: 30,
         leading: IconButton(
@@ -111,7 +111,6 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
         ],
       ),
       body: Container(
-        // Motif de fond subtil si désiré, ou simple couleur unie
         decoration: const BoxDecoration(
           color: AppColors.softWhite,
         ),
@@ -125,7 +124,7 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryGold.withOpacity(0.15),
+                              color: AppColors.primaryGold.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
@@ -158,7 +157,7 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.deepBlack : Colors.white, // Bulle client sombre / freelance blanche
+          color: isMe ? AppColors.deepBlack : Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(12),
             topRight: const Radius.circular(12),
@@ -167,7 +166,7 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 3,
               offset: const Offset(0, 1),
             ),
@@ -223,7 +222,6 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
         top: false,
         child: Row(
           children: [
-            // Zone de saisie arrondie WhatsApp
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -231,7 +229,7 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 4,
                       offset: const Offset(0, 1),
                     ),
@@ -271,17 +269,18 @@ class _ClientConversationDetailViewState extends State<ClientConversationDetailV
               ),
             ),
             const SizedBox(width: 6),
-            // Bouton envoi circulaire externe
             GestureDetector(
               onTap: _isSending ? null : _sendMessage,
               child: CircleAvatar(
                 radius: 23,
                 backgroundColor: AppColors.deepBlack,
                 child: _isSending
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(color: AppColors.primaryGold, strokeWidth: 2),
+                    ? const Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: AppColors.primaryGold, strokeWidth: 2),
+                        ),
                       )
                     : const Icon(Icons.send, color: AppColors.primaryGold, size: 20),
               ),

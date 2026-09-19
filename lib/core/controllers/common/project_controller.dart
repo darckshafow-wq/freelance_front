@@ -48,6 +48,17 @@ class ProjectController extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchFreelanceProjects() async {
+    _setLoading(true);
+    try {
+      publicProjects = await _projectService.getFreelanceProjects();
+    } catch (e) {
+      errorMessage = 'Erreur lors du chargement des missions.';
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> fetchProposals(int projectId) async {
     _setLoading(true);
     try {

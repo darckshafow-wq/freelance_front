@@ -12,6 +12,24 @@ class AuthController extends ChangeNotifier {
   String? errorMessage;
   UserModel? currentUser;
 
+  bool get isAuthenticated => currentUser != null;
+  String? get userRole => currentUser?.role;
+
+  Future<void> init() async {
+    final token = await StorageService.readAccessToken();
+    if (token != null && token.isNotEmpty) {
+      ApiClient.setToken(token);
+      try {
+        currentUser = await _authService.getCurrentUser();
+        debugPrint('✅ [AuthController] Session restaurée: ${currentUser?.email}');
+      } catch (e) {
+        debugPrint('⚠️ [AuthController] Échec restauration session: $e');
+        await logout();
+      }
+    }
+    notifyListeners();
+  }
+
   Future<bool> login({required String email, required String password}) async {
     isLoading = true;
     errorMessage = null;
@@ -37,8 +55,12 @@ class AuthController extends ChangeNotifier {
         debugPrint('👤 [AuthController] Fetching getCurrentUser() en fallback');
         currentUser = await _authService.getCurrentUser();
       }
+
+      if (currentUser != null) {
+        await StorageService.saveUserRole(currentUser!.role);
+      }
       
-      debugPrint('✅ [AuthController] Utilisateur connecté : \${currentUser?.email} (Role: \${currentUser?.role})');
+      debugPrint('✅ [AuthController] Utilisateur connecté : ${currentUser?.email} (Role: ${currentUser?.role})');
 
       isLoading = false;
       notifyListeners();

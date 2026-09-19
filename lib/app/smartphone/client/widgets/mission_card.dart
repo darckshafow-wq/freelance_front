@@ -11,6 +11,7 @@ class MissionCard extends StatelessWidget {
   final int index;
   final bool showImage;
   final bool isClientMission;
+  final bool isFreelanceView;
 
   const MissionCard({
     super.key,
@@ -18,6 +19,7 @@ class MissionCard extends StatelessWidget {
     this.index = 0,
     this.showImage = true,
     this.isClientMission = false,
+    this.isFreelanceView = false,
   });
 
   @override
@@ -39,9 +41,21 @@ class MissionCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.push(
-            (isClientMission ? RouteNames.clientOwnedProjectDetail : RouteNames.clientProjectDetail).replaceAll(':id', project.id.toString()),
-          ),
+          onTap: () {
+            if (isFreelanceView) {
+              context.pushNamed(
+                RouteNames.freelanceProjectDetail,
+                pathParameters: {'id': project.id.toString()},
+                extra: project, // Passing the full object to avoid redundant API call
+              );
+            } else {
+              context.pushNamed(
+                isClientMission ? RouteNames.clientOwnedProjectDetail : RouteNames.clientProjectDetail,
+                pathParameters: {'id': project.id.toString()},
+                extra: project,
+              );
+            }
+          },
           borderRadius: BorderRadius.circular(32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,64 +108,66 @@ class MissionCard extends StatelessWidget {
 
   Widget _buildDetails() {
     return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            project.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.deepBlack, letterSpacing: -0.5),
-                          ),
-                          if (!showImage) ...[
-                            const SizedBox(height: 6),
-                            StatusBadge(status: project.status),
-                          ],
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGold.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              project.category ?? 'General',
-                              style: const TextStyle(
-                                color: Color(0xFF916A08),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${project.budget.toInt()}€',
-                            style: const TextStyle(
-                              color: AppColors.deepBlack,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Row(
-                            children: [
-                              Icon(Icons.star, size: 12, color: Colors.orange),
-                              SizedBox(width: 2),
-                              Text('4.8', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.deepBlack)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                project.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.deepBlack, letterSpacing: -0.5),
+              ),
+              if (!showImage) ...[
+                const SizedBox(height: 6),
+                StatusBadge(status: project.status),
+              ],
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  project.category ?? 'General',
+                  style: const TextStyle(
+                    color: Color(0xFF916A08),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
                   ),
-                );
+                ),
+              ),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                project.budget > 0 
+                  ? '${project.budget.toInt()} FCFA' 
+                  : 'Prix à discuter',
+                style: const TextStyle(
+                  color: AppColors.deepBlack,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                ),
+              ),
+              const Row(
+                children: [
+                  Icon(Icons.star, size: 12, color: Colors.orange),
+                  SizedBox(width: 2),
+                  Text('4.8', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.deepBlack)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -25,8 +25,14 @@ class MessageService {
     await _dio.patch(ApiEndpoints.projectMessagesRead(projectId));
   }
 
-  Future<List<ConversationModel>> getConversations() async {
+  Future<List<ConversationModel>> getClientConversations() async {
     final response = await _dio.get(ApiEndpoints.clientConversations);
+    if (response.statusCode != 200) throw Exception('Erreur de chargement des conversations');
+    return (response.data as List).map((json) => ConversationModel.fromJson(Map<String, dynamic>.from(json))).toList();
+  }
+
+  Future<List<ConversationModel>> getFreelanceConversations() async {
+    final response = await _dio.get(ApiEndpoints.freelanceConversations);
     if (response.statusCode != 200) throw Exception('Erreur de chargement des conversations');
     return (response.data as List).map((json) => ConversationModel.fromJson(Map<String, dynamic>.from(json))).toList();
   }

@@ -7,6 +7,7 @@ import 'package:freelance_front/core/controllers/common/notification_controller.
 import 'package:freelance_front/core/controllers/common/project_controller.dart';
 import 'package:freelance_front/core/controllers/common/message_controller.dart';
 import 'package:freelance_front/core/controllers/client/freelance_controller.dart';
+import 'package:freelance_front/core/controllers/admin/admin_controller.dart';
 
 class AppProviders {
   static final List<SingleChildWidget> providers = [
@@ -16,5 +17,6 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => ProjectController()),
     ChangeNotifierProvider(create: (_) => MessageController()),
     ChangeNotifierProvider(create: (_) => FreelanceController()),
+    ChangeNotifierProvider(create: (_) => AdminController()),
   ];
 }

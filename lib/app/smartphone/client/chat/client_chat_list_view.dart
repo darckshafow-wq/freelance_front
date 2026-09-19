@@ -24,7 +24,7 @@ class _ClientChatListViewState extends State<ClientChatListView> {
 
   void _refreshConversations() {
     setState(() {
-      _conversationsFuture = MessageService().getConversations();
+      _conversationsFuture = MessageService().getClientConversations();
     });
   }
 

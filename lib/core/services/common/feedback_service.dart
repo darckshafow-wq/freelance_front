@@ -3,16 +3,28 @@ import 'package:freelance_front/core/constants/api_endpoints.dart';
 import 'package:freelance_front/core/models/admin/feedback_model.dart';
 import 'package:freelance_front/core/services/common/api_client.dart';
 
+import 'package:freelance_front/core/services/common/storage_service.dart';
+
 class FeedbackService {
   final Dio _dio = ApiClient.instance;
 
   Future<List<FeedbackModel>> getMyTickets() async {
-    final response = await _dio.get(ApiEndpoints.clientFeedbackMyTickets);
+    final String? role = await StorageService.readUserRole();
+    final String endpoint = role == 'FREELANCE' 
+        ? ApiEndpoints.freelanceFeedbackMyTickets 
+        : ApiEndpoints.clientFeedbackMyTickets;
+        
+    final response = await _dio.get(endpoint);
     return (response.data as List).map((json) => FeedbackModel.fromJson(Map<String, dynamic>.from(json))).toList();
   }
 
   Future<FeedbackModel> createTicket({required String subject, required String content}) async {
-    final response = await _dio.post(ApiEndpoints.clientFeedback, data: {'subject': subject, 'content': content});
+    final String? role = await StorageService.readUserRole();
+    final String endpoint = role == 'FREELANCE' 
+        ? ApiEndpoints.freelanceFeedback 
+        : ApiEndpoints.clientFeedback;
+
+    final response = await _dio.post(endpoint, data: {'subject': subject, 'content': content});
     return FeedbackModel.fromJson(Map<String, dynamic>.from(response.data));
   }
 

@@ -26,6 +26,16 @@ class ProfileModel {
     this.identityVerified = false,
   });
 
-  factory ProfileModel.fromJson(Map<String, dynamic> json) => _$ProfileModelFromJson(json);
+  factory ProfileModel.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> modifiableJson = Map.from(json);
+    if (modifiableJson['skills'] is String) {
+      modifiableJson['skills'] = (modifiableJson['skills'] as String)
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return _$ProfileModelFromJson(modifiableJson);
+  }
   Map<String, dynamic> toJson() => _$ProfileModelToJson(this);
 }

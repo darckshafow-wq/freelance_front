@@ -20,7 +20,7 @@ class MockData {
       'Adam Sy', 'Eva Diallo', 'Marc Durand', 'Inès Garcia', 'Paul Roux'
     ][index % 10],
     'email': 'freelance${index + 1}@example.com',
-    'role': 'FREELANCER',
+    'role': 'FREELANCE',
     'profile': {
       'id': index + 1,
       'user_id': index + 1,

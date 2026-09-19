@@ -1,27 +1,34 @@
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
-  // Adresse IP par défaut selon la plateforme
+  // ===========================================================================
+  // CONFIGURATION DE CONNEXION (IMPORTANT POUR LE TÉLÉPHONE RÉEL)
+  // ===========================================================================
+  
+  // IP de votre machine locale (à ajuster si nécessaire)
+  static const String _pcIP = '10.32.155.48'; 
+
   static String get defaultBaseUrl {
+    // Si on lance sur navigateur web sur le PC
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api/v1';
+      return 'http://localhost:8000/api/v1';
     }
-    return 'http://10.175.94.48:8000/api/v1';
+    // Si on lance sur un téléphone réel ou émulateur
+    // On utilise l'IP du PC pour que le téléphone puisse le voir sur le réseau
+    return 'http://$_pcIP:8000/api/v1';
   }
 
-  // Permet de surcharger au lancement : flutter run --dart-define=API_BASE_URL=http://...
+  // Permet de passer l'URL au lancement si besoin : --dart-define=API_BASE_URL=...
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
   );
 
-  // Retourne la Base URL active
   static String get activeBaseUrl {
     if (baseUrl.isNotEmpty) return baseUrl;
     return defaultBaseUrl;
   }
 
-  // Construit l'URL complète pour chaque requête HTTP
   static String resolveEndpoint(String endpoint) {
     final normalized = endpoint.startsWith('/') ? endpoint : '/$endpoint';
     return '$activeBaseUrl$normalized';
@@ -88,6 +95,11 @@ class ApiEndpoints {
   static String get freelanceStats => resolveEndpoint('/freelance/stats');
   static String get freelanceReports => resolveEndpoint('/freelance/reports');
   static String get freelanceReportsFiled => resolveEndpoint('/freelance/reports/filed');
+  static String get freelanceFeedback => resolveEndpoint('/freelance/feedback');
+  static String get freelanceFeedbackMyTickets => resolveEndpoint('/freelance/feedback/my-tickets');
+  static String get freelanceConversations => resolveEndpoint('/freelance/conversations');
+  static String get freelanceProjectsNearby => resolveEndpoint('/freelance/projects/nearby');
+  static String freelanceProjectDetail(int id) => resolveEndpoint('/freelance/projects/$id');
 
   // ==========================================
   // ADMIN
@@ -121,6 +133,7 @@ class ApiEndpoints {
   // ==========================================
   // MESSAGES & CHAT (HTTP & WebSockets)
   // ==========================================
+  static String projectDetail(int id) => resolveEndpoint('/projects/$id');
   static String projectMessages(int id) => resolveEndpoint('/projects/$id/messages');
   static String projectMessagesRead(int id) => resolveEndpoint('/projects/$id/messages/read');
   
@@ -144,12 +157,25 @@ class ApiEndpoints {
   // REVIEWS
   // ==========================================
   static String get reviews => resolveEndpoint('/reviews/');
-  static String get reports => resolveEndpoint('/reports');
-  static String get feedbacks => resolveEndpoint('/feedbacks');
 
   // ==========================================
-  // ENDPOINTS FREELANCE SUPPLÉMENTAIRES
+  // LOCATIONS
   // ==========================================
-  static String get freelanceProjectsNearby => resolveEndpoint('/freelance/projects/nearby');
-  static String freelanceProjectDetail(int id) => resolveEndpoint('/freelance/projects/$id');
+  static String get locationsCountries => resolveEndpoint('/locations/countries');
+  static String locationsCities(int countryId) => resolveEndpoint('/locations/countries/$countryId/cities');
+  static String locationsDistricts(int cityId) => resolveEndpoint('/locations/cities/$cityId/districts');
+  static String locationCountryFull(int countryId) => resolveEndpoint('/locations/countries/$countryId/full');
+
+  // ADMIN LOCATIONS
+  static String get adminLocationsCountries => resolveEndpoint('/admin/locations/countries');
+  static String adminLocationCountryDelete(int id) => resolveEndpoint('/admin/locations/countries/$id');
+  static String get adminLocationsCities => resolveEndpoint('/admin/locations/cities');
+  static String adminLocationCityDelete(int id) => resolveEndpoint('/admin/locations/cities/$id');
+  static String get adminLocationsDistricts => resolveEndpoint('/admin/locations/districts');
+  static String adminLocationDistrictDelete(int id) => resolveEndpoint('/admin/locations/districts/$id');
+
+  // ==========================================
+  // UPLOAD
+  // ==========================================
+  static String get uploadImage => resolveEndpoint('/upload/image');
 }

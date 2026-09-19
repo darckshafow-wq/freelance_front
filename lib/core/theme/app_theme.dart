@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:freelance_front/core/constants/app_colors.dart';
 
@@ -20,6 +21,12 @@ class AppTheme {
         backgroundColor: AppColors.pureWhite,
         foregroundColor: AppColors.deepBlack,
         elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark, // icônes réseau noires sur fond clair
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
       ),
       cardTheme: const CardThemeData(
         color: AppColors.pureWhite,
@@ -73,6 +80,12 @@ class AppTheme {
         backgroundColor: AppColors.deepBlack,
         foregroundColor: AppColors.pureWhite,
         elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light, // icônes réseau blanches sur fond foncé
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
       ),
       cardTheme: const CardThemeData(
         color: AppColors.anthracite,

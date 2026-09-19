@@ -10,8 +10,12 @@ import 'package:freelance_front/core/models/admin/category_model.dart';
 class ProjectService {
   final Dio _dio = ApiClient.instance;
 
-  Future<List<ProjectModel>> getProjects() async {
-    final response = await _dio.get(ApiEndpoints.freelanceProjects);
+  Future<List<ProjectModel>> getProjects({int skip = 0, int limit = 20, double? lat, double? lng, double? radiusKm}) async {
+    final query = <String, dynamic>{'skip': skip, 'limit': limit};
+    if (lat != null) query['lat'] = lat;
+    if (lng != null) query['lng'] = lng;
+    if (radiusKm != null) query['radius_km'] = radiusKm;
+    final response = await _dio.get(ApiEndpoints.freelanceProjects, queryParameters: query);
 
     if (response.statusCode != 200) {
       throw Exception('Erreur de chargement des projets');
@@ -41,6 +45,12 @@ class ProjectService {
     return (response.data as List).map((json) => ProjectModel.fromJson(Map<String, dynamic>.from(json))).toList();
   }
 
+  Future<List<ProjectModel>> getFreelanceProjects({String? categoryId}) async {
+    final response = await _dio.get(ApiEndpoints.freelanceProjects, queryParameters: {if (categoryId != null) 'category_id': categoryId});
+    if (response.statusCode != 200) throw Exception('Erreur de chargement des missions freelance');
+    return (response.data as List).map((json) => ProjectModel.fromJson(Map<String, dynamic>.from(json))).toList();
+  }
+
   Future<List<CategoryModel>> getClientCategories() async {
     final response = await _dio.get(ApiEndpoints.clientCategories);
     if (response.statusCode != 200) throw Exception('Erreur de chargement des catégories');
@@ -55,6 +65,23 @@ class ProjectService {
   Future<List<Map<String, dynamic>>> getProposalTimeline(int proposalId) async {
     final response = await _dio.get(ApiEndpoints.clientProposalTimeline(proposalId));
     return (response.data as List).map((item) => Map<String, dynamic>.from(item)).toList();
+  }
+
+  Future<ProjectModel> getProject(int id) async {
+    final response = await _dio.get(ApiEndpoints.projectDetail(id));
+    if (response.statusCode != 200) throw Exception('Erreur de chargement du projet');
+    return ProjectModel.fromJson(Map<String, dynamic>.from(response.data));
+  }
+
+  Future<bool> submitProposal(int projectId, double budget, String message) async {
+    final response = await _dio.post(
+      '${ApiEndpoints.activeBaseUrl}/freelance/projects/$projectId/proposals',
+      data: {
+        'message': message,
+        'proposed_price': budget.toDouble(), // Ensure double if integer fails
+      },
+    );
+    return response.statusCode == 200 || response.statusCode == 201;
   }
 
   Future<ProjectModel> getProjectById(int projectId) async {
@@ -91,6 +118,14 @@ class ProjectService {
 
   Future<List<ProposalModel>> getClientProposals() async {
     final response = await _dio.get(ApiEndpoints.clientProposals);
+    if (response.statusCode != 200) throw Exception('Erreur de chargement des propositions');
+    return (response.data as List)
+        .map((json) => ProposalModel.fromJson(Map<String, dynamic>.from(json)))
+        .toList();
+  }
+
+  Future<List<ProposalModel>> getFreelanceProposals() async {
+    final response = await _dio.get(ApiEndpoints.freelanceProposals);
     if (response.statusCode != 200) throw Exception('Erreur de chargement des propositions');
     return (response.data as List)
         .map((json) => ProposalModel.fromJson(Map<String, dynamic>.from(json)))

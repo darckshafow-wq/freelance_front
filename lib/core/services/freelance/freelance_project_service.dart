@@ -3,6 +3,7 @@ import 'package:freelance_front/core/constants/api_endpoints.dart';
 import 'package:freelance_front/core/services/common/api_client.dart';
 import 'package:freelance_front/core/services/common/mock_data.dart';
 import 'package:freelance_front/core/models/common/project_model.dart';
+import 'package:freelance_front/core/models/common/proposal_model.dart';
 
 class FreelanceProjectService {
   final Dio _dio = ApiClient.instance;
@@ -23,7 +24,7 @@ class FreelanceProjectService {
   }
 
   Future<ProjectModel> getProjectDetail(int projectId) async {
-    final response = await _dio.get(ApiEndpoints.freelanceProjectDetail(projectId));
+    final response = await _dio.get(ApiEndpoints.projectDetail(projectId));
     return ProjectModel.fromJson(response.data);
   }
 
@@ -31,7 +32,7 @@ class FreelanceProjectService {
     final response = await _dio.post(
       ApiEndpoints.freelanceProjectProposals(projectId),
       data: {
-        'proposed_price': proposedPrice,
+        'proposed_price': proposedPrice.toInt(),
         'message': message,
       },
     );
@@ -45,6 +46,25 @@ class FreelanceProjectService {
 
   Future<bool> markAsFinished(int projectId) async {
     final response = await _dio.post(ApiEndpoints.freelanceProjectFinished(projectId));
+    return response.statusCode == 200;
+  }
+
+  // ==========================================
+  // DIRECT OFFERS
+  // ==========================================
+  Future<List<ProposalModel>> getDirectOffers() async {
+    final response = await _dio.get(ApiEndpoints.freelanceDirectOffers);
+    final List data = response.data is List ? response.data : [];
+    return data.map((json) => ProposalModel.fromJson(Map<String, dynamic>.from(json))).toList();
+  }
+
+  Future<bool> acceptDirectOffer(int proposalId) async {
+    final response = await _dio.post(ApiEndpoints.freelanceDirectOfferAccept(proposalId));
+    return response.statusCode == 200;
+  }
+
+  Future<bool> rejectDirectOffer(int proposalId) async {
+    final response = await _dio.post(ApiEndpoints.freelanceDirectOfferReject(proposalId));
     return response.statusCode == 200;
   }
 

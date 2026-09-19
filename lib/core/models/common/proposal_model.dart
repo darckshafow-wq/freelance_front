@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class ProposalModel {
   final int id;
   final int projectId;
@@ -24,12 +27,15 @@ class ProposalModel {
   });
 
   factory ProposalModel.fromJson(Map<String, dynamic> json) {
+    final rawPrice = json['proposed_price'] ?? json['price'] ?? json['amount'] ?? '0';
+    final double parsedPrice = double.tryParse(rawPrice.toString()) ?? 0.0;
+
     return ProposalModel(
       id: json['id'] as int? ?? 0,
       projectId: json['project_id'] as int? ?? 0,
       freelanceId: json['freelance_id'] as int? ?? 0,
       message: json['message'] as String? ?? '',
-      proposedPrice: (json['proposed_price'] as num?)?.toDouble() ?? 0.0,
+      proposedPrice: parsedPrice,
       isDirectOffer: json['is_direct_offer'] as bool? ?? false,
       offeredByClient: json['offered_by_client'] as bool? ?? false,
       status: (json['status'] as String?)?.toUpperCase() ?? 'PENDING',

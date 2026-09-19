@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:freelance_front/core/constants/app_colors.dart';
+import 'package:freelance_front/core/controllers/common/auth_controller.dart';
 import 'package:freelance_front/core/models/common/project_model.dart';
 import 'package:freelance_front/core/models/common/profile_model.dart';
 import 'package:freelance_front/core/models/common/review_model.dart';
@@ -10,6 +11,7 @@ import 'package:freelance_front/core/services/client/project_service.dart';
 import 'package:freelance_front/core/services/common/profile_service.dart';
 import 'package:freelance_front/app/smartphone/client/popup/client_dialogs.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class ClientProfileView extends StatefulWidget {
   const ClientProfileView({super.key});
@@ -121,6 +123,27 @@ class _ClientProfileViewState extends State<ClientProfileView> {
                     Expanded(child: Text('Aide et feedback', style: TextStyle(color: AppColors.deepBlack, fontWeight: FontWeight.w800, fontSize: 16))),
                     Icon(Icons.chevron_right, color: AppColors.neutralGray),
                   ])),
+                ),
+                const SizedBox(height: 24),
+                // Bouton de déconnexion
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await context.read<AuthController>().logout();
+                      if (context.mounted) {
+                        context.go(RouteNames.login);
+                      }
+                    },
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('Se déconnecter', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.errorRed,
+                      side: const BorderSide(color: AppColors.errorRed, width: 2),
+                      minimumSize: const Size.fromHeight(56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
                 ),
               ],
             ),

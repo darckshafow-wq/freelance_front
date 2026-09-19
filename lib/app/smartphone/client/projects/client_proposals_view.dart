@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:freelance_front/core/routes/route_names.dart';
 import 'package:freelance_front/core/constants/app_colors.dart';
 import 'package:freelance_front/app/smartphone/client/widgets/proposal_card.dart';
 import 'package:freelance_front/core/models/common/proposal_model.dart';
@@ -36,12 +38,19 @@ class _ClientProposalsViewState extends State<ClientProposalsView> {
             itemCount: proposals.length,
             itemBuilder: (context, index) {
               final proposal = proposals[index];
-              return ProposalCard(
-                index: proposal.id,
-                freelancerName: 'Freelance #${proposal.freelanceId}',
-                price: '${proposal.proposedPrice.toStringAsFixed(0)}€',
-                message: proposal.message,
-                avatarUrl: 'https://i.pravatar.cc/150?u=freelance${proposal.freelanceId}',
+              return InkWell(
+                onTap: () => context.pushNamed(
+                  RouteNames.clientProjectDetail,
+                  pathParameters: {'id': proposal.projectId.toString()},
+                  queryParameters: {'owner': 'client'},
+                ),
+                child: ProposalCard(
+                  index: proposal.projectId, // L'identifiant de la conversation utilise l'ID du projet !
+                  freelancerName: 'Freelance #${proposal.freelanceId}',
+                  price: '${proposal.proposedPrice.toStringAsFixed(0)}€',
+                  message: proposal.message,
+                  avatarUrl: 'https://i.pravatar.cc/150?u=freelance${proposal.freelanceId}',
+                ),
               );
             },
           );

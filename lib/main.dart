@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 import 'app/app.dart';
-import 'core/services/common/api_client.dart';
-import 'core/services/common/storage_service.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -11,11 +23,4 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const App();
   }
-}
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final token = await StorageService.readAccessToken();
-  if (token != null && token.isNotEmpty) ApiClient.setToken(token);
-  runApp(const MyApp());
 }

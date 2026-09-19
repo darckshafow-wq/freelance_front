@@ -19,7 +19,6 @@ class _RegisterViewState extends State<RegisterView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _acceptTerms = false;
   String _selectedRole = 'CLIENT';
 
   @override
@@ -32,15 +31,6 @@ class _RegisterViewState extends State<RegisterView> {
 
   void _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!_acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez accepter les conditions d\'utilisation'),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      return;
-    }
 
     final authController = context.read<AuthController>();
     final success = await authController.register(
@@ -51,413 +41,211 @@ class _RegisterViewState extends State<RegisterView> {
     );
 
     if (success && mounted) {
-      context.pushNamed(
-        RouteNames.otpVerification,
-        extra: {
-          'email': _emailController.text.trim(),
-          'type': 'verification',
-        },
-      );
+      context.pushNamed(RouteNames.otpVerification, extra: {
+        'email': _emailController.text.trim(),
+        'type': 'verification',
+      });
     }
-  }
-
-  InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon}) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: TextStyle(
-        color: AppColors.neutralGrayDark.withValues(alpha: 0.6),
-        fontSize: 15,
-      ),
-      filled: true,
-      fillColor: AppColors.softWhite,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: AppColors.neutralGrayDark.withValues(alpha: 0.15),
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: AppColors.primaryGold,
-          width: 1.5,
-        ),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.errorRed),
-      ),
-      suffixIcon: suffixIcon,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authController = context.watch<AuthController>();
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 900;
 
+    if (isDesktop) return _buildDesktopLayout();
+
+    return _buildMobileLayout();
+  }
+
+  Widget _buildMobileLayout() {
+    final authController = context.watch<AuthController>();
     return Scaffold(
-      backgroundColor: AppColors.pureWhite,
+      backgroundColor: AppColors.primaryGold,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.deepBlack, size: 20),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
           onPressed: () => context.pop(),
         ),
-        centerTitle: true,
-        title: const Text(
-          'FreeFlow',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.primaryGold,
-            letterSpacing: 1,
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(),
+            child: const Text('Sign In', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           ),
-        ),
+          const SizedBox(width: 16),
+        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28.0),
-          child: Form(
-            key: _formKey,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-
-                // Title
-                const Center(
-                  child: Text(
-                    'Cr\u00e9er un Compte',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.deepBlack,
-                    ),
-                  ),
-                ).animate().fadeIn().slideY(begin: -0.1),
+                const Text('Sign Up', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900)).animate().fadeIn().slideX(begin: -0.1),
                 const SizedBox(height: 8),
-
-                // Role Selector
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.softWhite,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildRoleChip('Client', 'CLIENT'),
-                        const SizedBox(width: 4),
-                        _buildRoleChip('Freelance', 'FREELANCER'),
-                      ],
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 200.ms),
-                const SizedBox(height: 32),
-
-                // Name Label
-                const Text(
-                  'Nom',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.deepBlack,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  style: const TextStyle(color: AppColors.deepBlack, fontSize: 15),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Veuillez entrer votre nom';
-                    }
-                    return null;
-                  },
-                  decoration: _fieldDecoration(hintText: 'Jean Dupont'),
-                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05),
-                const SizedBox(height: 20),
-
-                // Email Label
-                const Text(
-                  'Email',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.deepBlack,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(color: AppColors.deepBlack, fontSize: 15),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Veuillez entrer votre email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Email invalide';
-                    }
-                    return null;
-                  },
-                  decoration: _fieldDecoration(hintText: 'exemple@email.com'),
-                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05),
-                const SizedBox(height: 20),
-
-                // Password Label
-                const Text(
-                  'Mot de passe',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.deepBlack,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  style: const TextStyle(color: AppColors.deepBlack, fontSize: 15),
-                  validator: (value) {
-                    if (value == null || value.length < 6) {
-                      return 'Le mot de passe doit faire au moins 6 caract\u00e8res';
-                    }
-                    return null;
-                  },
-                  decoration: _fieldDecoration(
-                    hintText: '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: AppColors.neutralGray,
-                        size: 20,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.05),
-                const SizedBox(height: 16),
-
-                // Terms checkbox
-                Row(
-                  children: [
-                    SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: Checkbox(
-                        value: _acceptTerms,
-                        onChanged: (val) => setState(() => _acceptTerms = val ?? false),
-                        activeColor: AppColors.primaryGold,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        side: const BorderSide(color: AppColors.neutralGray),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: RichText(
-                        text: const TextSpan(
-                          text: 'J\'accepte les ',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.neutralGray,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: 'Conditions d\'utilisation',
-                              style: TextStyle(
-                                color: AppColors.primaryGold,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 600.ms),
-                const SizedBox(height: 24),
-
-                // Error message
-                if (authController.errorMessage != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.errorRed.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.errorRed, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            authController.errorMessage!,
-                            style: const TextStyle(
-                              color: AppColors.errorRed,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // Create Account Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: authController.isLoading ? null : _handleRegister,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.deepBlack,
-                      foregroundColor: AppColors.primaryGold,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: authController.isLoading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              color: AppColors.primaryGold,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            'Cr\u00e9er un compte',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.1),
-                const SizedBox(height: 28),
-
-                // Or Sign in with
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(color: AppColors.neutralGrayDark.withValues(alpha: 0.3)),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Ou continuer avec',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.neutralGray,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(color: AppColors.neutralGrayDark.withValues(alpha: 0.3)),
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 800.ms),
-                const SizedBox(height: 20),
-
-                // Social Login Icons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildSocialButton(Icons.facebook, const Color(0xFF1877F2)),
-                    const SizedBox(width: 20),
-                    _buildSocialButton(Icons.g_mobiledata_rounded, AppColors.errorRed),
-                    const SizedBox(width: 20),
-                    _buildSocialButton(Icons.apple, AppColors.deepBlack),
-                  ],
-                ).animate().fadeIn(delay: 900.ms).slideY(begin: 0.1),
-                const SizedBox(height: 32),
-
-                // Already have an account
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'D\u00e9j\u00e0 un compte ? ',
-                      style: TextStyle(
-                        color: AppColors.neutralGray,
-                        fontSize: 14,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: const Text(
-                        'Se connecter',
-                        style: TextStyle(
-                          color: AppColors.primaryGold,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 1000.ms),
-                const SizedBox(height: 24),
+                const Text('Créez votre compte pour rejoindre l\'élite du freelancing.', style: TextStyle(color: Colors.black54, fontSize: 14)).animate().fadeIn(delay: 200.ms),
               ],
             ),
           ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      // Role Selector
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: AppColors.softWhite, borderRadius: BorderRadius.circular(16)),
+                        child: Row(
+                          children: [
+                            _roleButton('CLIENT'),
+                            _roleButton('FREELANCE'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      _mobileTextField(_nameController, 'Nom complet', Icons.person_outline_rounded),
+                      const SizedBox(height: 20),
+                      _mobileTextField(_emailController, 'Email', Icons.email_outlined),
+                      const SizedBox(height: 20),
+                      _mobileTextField(_passwordController, 'Mot de passe', Icons.lock_outline_rounded, isPassword: true),
+                      const SizedBox(height: 40),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: ElevatedButton(
+                          onPressed: authController.isLoading ? null : _handleRegister,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            elevation: 0,
+                          ),
+                          child: authController.isLoading
+                              ? const CircularProgressIndicator(color: AppColors.primaryGold)
+                              : const Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        ),
+                      ).animate().fadeIn(delay: 400.ms).scale(),
+                    ],
+                  ),
+                ),
+              ),
+            ).animate().slideY(begin: 0.2, duration: 600.ms, curve: Curves.easeOutQuart),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _roleButton(String role) {
+    final active = _selectedRole == role;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedRole = role),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: active ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(role, style: TextStyle(color: active ? Colors.black : Colors.grey, fontWeight: FontWeight.w900, fontSize: 13)),
         ),
       ),
     );
   }
 
-  Widget _buildRoleChip(String label, String role) {
-    final isSelected = _selectedRole == role;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedRole = role),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.deepBlack : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.primaryGold : AppColors.neutralGray,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
+  Widget _mobileTextField(TextEditingController ctrl, String hint, IconData icon, {bool isPassword = false}) {
+    return TextFormField(
+      controller: ctrl,
+      obscureText: isPassword && _obscurePassword,
+      style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.black26, fontWeight: FontWeight.bold),
+        prefixIcon: Icon(icon, color: Colors.black12),
+        suffixIcon: isPassword 
+          ? IconButton(icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black12), onPressed: () => setState(() => _obscurePassword = !_obscurePassword)) 
+          : null,
+        filled: true,
+        fillColor: AppColors.softWhite,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(vertical: 20),
+      ),
+    );
+  }
+
+  // --- PREVIOUS DESKTOP LAYOUT ---
+  Widget _buildDesktopLayout() {
+    final authController = context.watch<AuthController>();
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F1B14),
+      body: Center(
+        child: Container(
+          width: 1000, height: 750,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 60),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Sign Up 👋', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 40),
+                        _buildDesktopForm(authController),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: Image.network('https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=2070&auto=format&fit=crop', fit: BoxFit.cover, height: double.infinity),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSocialButton(IconData icon, Color color) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        color: AppColors.softWhite,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.neutralGrayDark.withValues(alpha: 0.15),
-        ),
+  Widget _buildDesktopForm(AuthController authController) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full Name')),
+          const SizedBox(height: 16),
+          TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
+          const SizedBox(height: 16),
+          TextFormField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+          const SizedBox(height: 32),
+          ElevatedButton(onPressed: _handleRegister, child: const Text('Create Account')),
+        ],
       ),
-      child: Icon(icon, color: color, size: 28),
     );
   }
 }

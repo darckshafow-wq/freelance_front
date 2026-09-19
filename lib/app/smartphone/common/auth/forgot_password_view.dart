@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:freelance_front/core/constants/app_colors.dart';
 import 'package:freelance_front/core/routes/route_names.dart';
-
 import 'package:freelance_front/core/widgets/app_text_field.dart';
 
 class ForgotPasswordView extends StatefulWidget {
@@ -23,7 +22,6 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   }
 
   void _handleSendOtp() {
-    // Simuler l'envoi de l'OTP
     context.pushNamed(
       RouteNames.otpVerification,
       extra: {
@@ -35,8 +33,11 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 900;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: isDesktop ? AppColors.softWhite : AppColors.pureWhite,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -46,65 +47,79 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              const Text(
-                'Mot de passe oublié ?',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.deepBlack,
+        child: Center(
+          child: Container(
+            width: isDesktop ? 500 : double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: isDesktop ? 50 : 32.0),
+            decoration: isDesktop ? BoxDecoration(
+              color: AppColors.pureWhite,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
                 ),
-              ).animate().fadeIn().slideX(begin: -0.1),
-              const SizedBox(height: 12),
-              const Text(
-                'Pas de soucis ! Entrez votre adresse e-mail et nous vous enverrons un code de réinitialisation.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.neutralGray,
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
-                ),
-              ).animate().fadeIn(delay: 200.ms),
-              const SizedBox(height: 48),
+              ],
+            ) : null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isDesktop) const SizedBox(height: 50),
+                const Text(
+                  'Mot de passe oublié ?',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.deepBlack,
+                  ),
+                ).animate().fadeIn().slideX(begin: -0.1),
+                const SizedBox(height: 12),
+                const Text(
+                  'Pas de soucis ! Entrez votre adresse e-mail et nous vous enverrons un code de réinitialisation.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.neutralGray,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                ).animate().fadeIn(delay: 200.ms),
+                const SizedBox(height: 48),
 
-              // Email Input
-              AppTextField(
-                controller: _emailController,
-                label: 'Adresse email',
-                prefixIcon: Icons.email_outlined,
-              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
-              
-              const SizedBox(height: 32),
+                AppTextField(
+                  controller: _emailController,
+                  label: 'Adresse email',
+                  prefixIcon: Icons.email_outlined,
+                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                
+                const SizedBox(height: 32),
 
-              // Send Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _handleSendOtp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlack,
-                    foregroundColor: AppColors.primaryGold,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _handleSendOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.deepBlack,
+                      foregroundColor: AppColors.primaryGold,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'Envoyer le code',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Envoyer le code',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 600.ms).scale(),
-            ],
+                ).animate().fadeIn(delay: 600.ms).scale(),
+                if (isDesktop) const SizedBox(height: 50),
+              ],
+            ),
           ),
         ),
       ),

@@ -18,19 +18,19 @@ class _ClientMainViewState extends State<ClientMainView> {
     final int currentIndex = _calculateSelectedIndex(context);
 
     return Scaffold(
-      resizeToAvoidBottomInset: false, // Évite le chevauchement si le clavier s'ouvre
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // Le contenu principal de la vue
           Positioned.fill(
-            child: widget.child,
+            child: SafeArea(
+              bottom: false,
+              child: widget.child,
+            ),
           ),
-          
-          // La barre de navigation flottante fixée en bas
           Positioned(
             left: 0,
             right: 0,
-            bottom: 16, // Distance du bas pour l'effet flottant
+            bottom: 16,
             child: SafeArea(
               top: false,
               child: Center(
@@ -50,11 +50,9 @@ class _ClientMainViewState extends State<ClientMainView> {
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith(RouteNames.clientDashboard)) return 0;
-    if (location.startsWith(RouteNames.clientFreelanceSearch)) return 1;
     if (location.startsWith(RouteNames.clientProjects)) return 2;
-    if (location.startsWith(RouteNames.clientProfile)) return 3;
-    if (location.startsWith(RouteNames.clientProposals)) return 4;
     if (location.startsWith(RouteNames.clientChat)) return 5;
+    if (location.startsWith(RouteNames.clientProfile)) return 3;
     return 0;
   }
 
@@ -63,20 +61,14 @@ class _ClientMainViewState extends State<ClientMainView> {
       case 0:
         context.goNamed(RouteNames.clientDashboard);
         break;
-      case 1:
-        context.goNamed(RouteNames.clientFreelanceSearch);
-        break;
       case 2:
         context.goNamed(RouteNames.clientProjects);
         break;
-      case 3:
-        context.goNamed(RouteNames.clientProfile);
-        break;
-      case 4:
-        context.goNamed(RouteNames.clientProposals);
-        break;
       case 5:
         context.goNamed(RouteNames.clientChat);
+        break;
+      case 3:
+        context.goNamed(RouteNames.clientProfile);
         break;
     }
   }
